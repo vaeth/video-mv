@@ -1,0 +1,47 @@
+#! /usr/bin/env sh
+# (C) Martin V\"ath <martin@mvath.de>
+
+Echo() {
+	printf '%s\n' "${*}"
+}
+
+Fatal() {
+	printf '%s: %s\n' "${0##*/}" "${*}" >&2
+	exit 2
+}
+
+Usage() {
+	Echo "Usage: ${0##*/} [options] TIME
+Sleep until TIME.  TIME must be understood by the 'date' utility.
+Typical examples for TIME are:
+	23:59
+	'23:59:59 31 Dec 2012' (do not forget quoting from the shell)
+options:
+-q  quiet
+-h  show this help text"
+	exit ${1:-1}
+}
+
+quiet=false
+OPTIND=1
+while getopts "qhH?" opt
+do	case "${opt}" in
+	q)	quiet=:;;
+	*)	Usage 0;;
+	esac
+done
+shift $(( ${OPTIND} - 1 ))
+[ ${#} -gt 0 ] || Usage
+
+curr="`date '+%s'`" && [ -n "${curr}" ] || \
+	Fatal 'cannot determine current date'
+diff=`date -d "${*}" '+%s'` && [ -n "${diff}" ] || \
+	Fatal 'cannot determine destination date'
+[ "${diff}" -gt "${curr}" ] && diff=$(( ${diff} - ${curr} )) || diff=''
+if ! ${quiet}
+then	if text=`date -d "${*}"` && [ -n "${text}" ]
+	then	Echo "Sleeping until ${text}"
+	else	Echo "Sleeping ${diff:-0} seconds"
+	fi
+fi
+[ -z "${diff}" ] || exec sleep "${diff}"

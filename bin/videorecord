@@ -1,0 +1,111 @@
+#! /usr/bin/env sh
+# (C) Martin V\"ath <martin@mvath.de>
+
+Echo() {
+	printf '%s\n' "${*}"
+}
+
+Message() {
+	Echo "${0##*/}: ${*}" >&2
+}
+
+Fatal() {
+	Message "${*}"
+	exit 2
+}
+
+Usage() {
+	Echo "Usage: ${0##*/} [options] [DIR/]basename TIME LEN [video options]
+Records video DIR/basename.avi at the given time and duration.
+
+TIME must be understood by the 'date' utility. Examples:
+	now
+	23:59
+	'23:59:59 31 Dec 2012' (do not forget quoting from the shell)
+
+LEN   hh:mm:ss  (hh=hour, mm=minute, ss=second)
+LEN may be - or 0 or empty: In that case, LEN is assumed to be infinity;
+in this case you must stop manually, e.g. with Ctrl-C.
+
+All additional arguments are passed as options to the video script.
+Typical examples are:
+  -d-20   Darker by 20
+  -f      Force overwriting existing file
+  -g      Do not add
+
+The following options are available:
+  -q      Be quiet
+  -V      Be not very verbose"
+	exit ${1:-1}
+}
+
+# Default options
+
+verbose=:
+quiet=''
+
+# Parse options
+
+while getopts 'qVhH?' opt
+do	case "${opt}" in
+	q)	quiet='-q';;
+	V)	verbose=false;;
+	*)	Usage 0;;
+	esac
+done
+shift $(( ${OPTIND} -1 ))
+[ ${#} -lt 1 ] && Usage
+
+# Interpret parameters
+
+base="${1##*/}"
+srcdir="${1%/*}"
+[ "${srcdir}" = "${1}" ] && srcdir="${PWD}"
+[ -n "${srcdir}" ] && test -d "${srcdir}" || Usage
+shift
+
+time="${1}"
+[ ${#} -lt 1 ] && Usage
+shift
+len="${1}"
+case "${len}" in
+0|-)	len=''
+	shift
+;;
+-*)	:
+;;
+*)	[ ${#} -ge 1 ] && shift
+;;
+esac
+
+MyExec() {
+	${verbose} && Echo "${*}"
+	"${@}"
+}
+
+MyCd() {
+	${verbose} && Echo "cd ${1}"
+	cd -- "${1}" >/dev/null 2>&1 || Fatal "cannot cd to ${1}"
+}
+
+EarlyReturn() {
+	Message "stopping due to signal or error"
+	exit 1
+}
+
+# main function
+
+DoRecord() {
+	MyCd "${srcdir}"
+	if [ -n "${time}" ]
+	then	MyExec sleepto ${quiet} "${time}" || EarlyReturn
+		${verbose} && MyExec date
+		MyExec video ${quiet} "${len:+-e}" "${len}" "${@}" "${base}.avi"
+		rstat="${?}"
+	fi
+}
+
+${verbose} && MyExec date
+DoRecord "${@}"
+${verbose} && MyExec date
+return ${rstat}

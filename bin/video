@@ -49,13 +49,18 @@ Usage() {
 Records TV to FILE, using mencoder and setting alsa-mixer appropriately.
 If FILE is '-', then the video is displayed (mplayer) instead of recorded.
 
+Certain intermediate files may be produced or deleted in the current directory,
+so better run this script in an empty directory.
+
 If this script is called by a name containing \"encod\" \"file\" or \"conv\"
 this script does something rather different (see also option -v):
 In this case, a file is converted with ${defpass} passes (see -v? for details)."
-	else	Echo \
-"Usage:
+	else	Echo "Usage:
 ${name} [options] PASS INFILE OUTFILE [mplayer-options] [-- extra-files]
-Call mencoder to compress a file (typically with ${defpass} passes).
+Calls mencoder to compress a file (typically with ${defpass} passes).
+
+Certain intermediate files may be produced or deleted in the current directory,
+so better run this script in an empty directory.
 
 If this script is called by a name not containing \"encod\" \"file\" or \"conv\"
 this script does something rather different (see also option -v):
@@ -295,7 +300,7 @@ SetDefaults() {
 		inputchannel='-'
 		refinement=''
 		device=''
-	else	optargs="${optargs}O2kP:t:s:S:"
+	else	optargs="${optargs}O2kP:t:s:S:h"
 		br=800
 		lb=''
 		hqdn=''
