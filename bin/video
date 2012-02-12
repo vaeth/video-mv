@@ -1,0 +1,864 @@
+#! /usr/bin/env sh
+# (C) Martin V\"ath <martin@mvath.de>
+
+set -f
+
+name="${0##*/}"
+soundmagic='frameno.avi'
+morepass='divx2pass.log'
+morepassed="${morepass}.bak"
+defpass=4
+therefinement='bidir_refine=4:dia=2'
+carddimension="width=768:height=576"
+
+case "${name}" in
+*encod*|*file*|*conv*)
+	fromfile=:
+;;
+*)
+	fromfile=false
+;;
+esac
+
+Echo() {
+	printf '%s\n' "${*}"
+}
+
+Verbose() {
+	Echo "# ${*}"
+}
+
+Message() {
+	Echo "${name}: ${*}" >&2
+}
+
+Fatal() {
+	Message "${*}"
+	trapret=2
+	exit 2
+}
+
+Warning() {
+	Message "warning: ${*}"
+}
+
+Usage() {
+	if ! ${fromfile}
+	then	Echo \
+"Usage: ${name} [options] FILE [additional mplayer/mencoder-options]
+Records TV to FILE, using mencoder and setting alsa-mixer appropriately.
+If FILE is '-', then the video is displayed (mplayer) instead of recorded.
+
+If this script is called by a name containing \"encod\" \"file\" or \"conv\"
+this script does something rather different (see also option -v):
+In this case, a file is converted with ${defpass} passes (see -v? for details)."
+	else	Echo \
+"Usage:
+${name} [options] PASS INFILE OUTFILE [mplayer-options] [-- extra-files]
+Call mencoder to compress a file (typically with ${defpass} passes).
+
+If this script is called by a name not containing \"encod\" \"file\" or \"conv\"
+this script does something rather different (see also option -v):
+In this case, a file is recorded from TV (see -v? for details).
+
+PASS can have the following values
+  -    Do not encode but display using mplayer (no OUTFILE argument)
+  X-Y  Do all passes from X to Y (including X and Y).
+  X    Do only pass X
+  c    Copy video whatever it was (sound is treated according to the options)
+  0    Do only cleanup (as after last pass, see below)
+
+The first pass has number 1, the maximal pass is by default ${defpass};
+other values for the maximal pass can be specified with -P.
+  After the maximal pass is finished, the intermediate files are removed;
+this can be suppressed with option -k
+  Before pass 1, it is verified that no intermediate files exist
+to remove these files instead of checking for them, use option -f
+
+An earlier version of this script supported a first soundencoding pass
+using ${soundmagic}. This is obsoleted in new mencoder versions.
+The new version of this script does the soundencoding (if necessary)
+during the maximal pass. If you want to do this before the first pass,
+use \"c\" with soundencoding options and then encode the resulting file."
+	fi
+	Echo "
+The following options are available:
+
+Various:
+-f   Force overwrite of existing output file
+-p   Print mencoder call instead of executing (so you can edit)
+-#   Skip most sanity checks for the options
+-q   quiet"
+	${fromfile} && Echo \
+"-P X Set the maximal pass to X. If X is 0 or no number, then assume that
+     codec is implicitly 1-pass (no vpass-argument is passed to mencoder).
+-O   Send output of all passes to OUTFILE. Otherwise, the output is sent to
+     /dev/null until the last pass of the current call of the script is
+     executed (which is not necessarily the maximal pass specified with -P).
+     Note that this differs slightly from an earlier version of this script:
+     If you want to ignore the output always (e.g. if the last pass is smaller
+     than the maximal pass), you can explicitly specify /dev/null as OUTFILE."
+	Echo \
+"-v   Magic option to behave as if called under a different name (see above)
+     This should be the first option, because it resets all other options.
+
+Videostream:
+-m C Record using container format C. Some choices:
+     avi mpeg lavf rawvideo rawaudio
+-4 C Record using codec C. Current value ${codec}. Some choices:
+     mpeg4 (Divx4/5), msmpeg4v2, h261, h263, h263p, mjpeg, msmpeg4 (Divx3),...
+-b x Bitrate, currently ${br}"
+	if ${fromfile}
+	then	Echo \
+"-t X Use turbomode until (including) pass X in multipassmode
+     (The default X=0 means: never use turbomode).
+-k   Keep temporary files even after the last pass.
+     For compatibility with earlier versions, option -2 has the same effect"
+	else	Echo \
+"-D X Use device X  (currently: ${device:-default /dev/video0})
+-i # Use input=#   (currently: ${inputnr})
+-I I Use Channel=I (currently: ${inputchannel}) (-I - for no channel selection)
+-2   Use v4l instead of v4l2
+-d B Use brightness B (currently: ${brightness})
+-c C Use contrast   C (currently: ${contrast})
+-h H Use hue        H (currently: ${hue})
+-s S Use saturation S (currently: ${saturation})"
+	fi
+	Echo \
+"-M X set mbd (see mencoder manpage) currently ${mbd} (0: fast, 2: high quality)
+-r Use refinement options (higher quality, slowdown): ${therefinement}
+-R Remove current refinement options (currently: \"${refinement}\")
+-F XXX Add XXX to the videofilter chain "\
+"(e.g. \"pp=lb\", \"pullup\" or \"filmdint\")
+   If you use this, softskip is automatically added.
+-e hh:mm:ss or Y or Xmb   stop after recording hh:mm:ss/X seconds/Y megabyte
+     (be aware that sound and picture will stop at slightly different times)"
+	if ${fromfile}
+	then	Echo \
+"-s X or hh:mm:ss   skip first X seconds resp hh:mm:ss. Alterantively:
+-s X-Y    start at X sec, stop at Y sec. This is the same as -s X -e \$((Y-X))
+-S X cut off first X bytes
+-G   Start new chunk each GB (incompatible, needed for files >4GB)
+-g   No odml headers (opposite of -G) (default)"
+	else	Echo \
+"-H   no hqdn3d filtering (lower quality but less processor time)
+-L   no interlacing (lower quality but less processor time)
+-U   Uncropped - do not crop (not recommended; however less processor time)
+-G   Start new chunk each GB (incompatible, needed for files >4GB) (default)
+-g   No odml headers (opposite of -G)"
+	fi
+	Echo \
+"-C wide:xmin  horizontal crop (currently \"${cropw}:${cropx}\", "\
+"maximal 768:0)
+-c high:ymin  vert. crop (curr. \"${croph}:${cropy}\", max. 576:0, "\
+"often 416:80 or 400:)
+   Optical max. is -c 568:6 -C 762:4 (not multiple of 16 - incompatible)
+-w h:ymin same as -c \"\$((400+h*16)):ymin\" for wide (less high) movies
+-W h:ymin same as -c \"\$((400-h*16)):ymin\" for wide (less high) movies
+-n   Same as -C 704:24 (chop right boundary for certain narrow movies)
+-E \"expand\" instead of \"crop\"
+-A X[:Y] Change aspect ratio to force width X (typically 1024 or 768)
+         If X is empty, X defaults to the  width crop value resp. to 720
+         If Y is empty, Y defaults to the height crop value resp. to 576
+
+Audiostream:
+-0   Silent - no sound
+-1   Use mono sound instead of stereo (use internally half bitrate for lame)"
+	if ! ${fromfile}
+	then	Echo \
+"-3 X Use language X (X=1/2), implies -1
+-u   Copy sound unencoded (default).
+     TAKE CARE: You *must* convert the sound afterwards to a compatible
+     format which can be processed with programs like avidemux.
+     However, this \"two-pass soundencoding\" gives the best possible quality.
+-l   Use Lame-cbr for sound (not default, because too slow with -Q 0)"
+	else	Echo \
+"-u   Copy sound unencoded whatever it was
+-l   Use Lame-cbr for sound (default)
+-S x Use x% loudness for sound capturing (current: ${loudness})"
+	fi
+	if ${alsa}
+	then	Echo \
+"-.   Output sound as pcm/raw
+-z   Do not use alsa
+-Z   Use alsa (currently chosen)"
+	else	Echo \
+"-z   Do not use alsa (currently chosen)
+-Z   Use alsa"
+	fi
+	Echo \
+"-a   Use Lame-abr for sound (better quality but incompatible for cutting)
+-B x Bitrate for lame (only useful if lame is used). Sane values: 128, 160
+     Current value: ${lamebr}, internally: ${lamebreff} (cf. option -1)
+-Q x Quality for lame (0-9, 0 is best but much processor time), "\
+"currently ${lamequality}"
+	exit ${1:-2}
+}
+
+Push() {
+	case "${1}" in
+	-*)	shift
+		eval "${1}=''";;
+	esac
+	PushD_="${1}"
+	shift
+	eval "for PushA_
+	do	[ -z \"\${${PushD_}}\" ] && ${PushD_}=\\' \
+			|| ${PushD_}=\"\${${PushD_}} '\"
+		PushB_=\"\${PushA_}\"
+		while {
+			PushC_=\"\${PushB_%%\\'*}\"
+			[ \"\${PushC_}\" != \"\${PushB_}\" ]
+		}
+		do	${PushD_}=\"\${${PushD_}}\${PushC_}'\\\\''\"
+			PushB_=\"\${PushB_#*\\'}\"
+		done
+		${PushD_}=\"\${${PushD_}}\${PushB_}'\"
+	done"
+}
+
+SetVars() {
+	case "${3}" in
+	*:*)
+		eval "${1}=\"\${3%%:*}\"
+		${2}=\"\${3##*:}\""
+		return;;
+	esac
+	eval "${1}=\"\${3}\"
+	${2}=''"
+}
+
+CalcLamebr() {
+	if [ "${forcechan}" -eq 1 ]
+	then	lamebreff="$(( ${lamebr} / 2 ))"
+	else	lamebreff="${lamebr}"
+	fi
+}
+
+# We first set the default options.
+# This must be done in a function, because we must repeat this for option -v.
+
+SetDefaults() {
+# General options
+	force=false
+	noexec=false
+	quiet=''
+	alwaysout=false
+	sanity=:
+# Sound-related options
+	alsa=false
+	amode=1
+	forcechan=2
+	lametype='cbr'
+	lamemode=0
+	lbrspec=false
+	lamebr=128
+	turbolastpass=0
+# Video-related and various other options
+	codec='mpeg4'
+	Push -c oftype
+	vver=2
+	keep=false
+	Push -c endpos
+	Push -c skips
+	Push -c skipb
+	mbd=2
+	Push -c vfadd
+	SetVars aspectw aspecth ':'
+	brspec=false
+	expand=''
+	loudnessplay=100
+	optargs='fpqrRm:4:Ggb:M:F:e:Ec:C:w:W:noUA:01ulaB:Q:vzZ.H!?'
+# Possibly differing defaults:
+	if ! ${fromfile}
+	then	optargs="${optargs}L23:i:d:k:h:s:S:I:V:D:"
+		brightness=0
+		contrast=0
+		hue=0
+		saturation=0
+		br=4000
+		loudness=100
+		#codec='mpeg4'
+		#Push -c oftype '-of' 'mpeg'
+		lb='pp=lb'
+		#lb='pullup'
+		hqdn='hqdn3d'
+		cropcmd=:
+		SetVars cropw cropx '720:24'
+		SetVars croph cropy '544:16'
+		noodml=''
+		sound='c'
+		soundencode=false
+		lamequality=1
+		totalpass=0
+		inputnr=0
+		inputchannel='-'
+		refinement=''
+		device=''
+	else	optargs="${optargs}O2kP:t:s:S:"
+		br=800
+		lb=''
+		hqdn=''
+		cropcmd=false
+		SetVars cropw cropx ':'
+		SetVars croph cropy ':'
+		noodml='-noodml'
+		sound='l'
+		soundencode=:
+		lamequality=0
+		totalpass="${defpass}"
+		refinement="${therefinement}"
+	fi
+	if test -r /etc/videodefaults
+	then	. /etc/videodefaults
+	else	. videodefaults
+	fi
+	CalcLamebr
+}
+SetDefaults
+
+# Parse the option arguments
+
+SetStartEnd() {
+	startarg="${1%%-*}"
+	endarg="${1##*-}"
+	[ "${startarg}" = "${1}" ] && return
+	Push -c skips '-ss' "${startarg}"
+	Push -c endpos '-endpos' "$(( ${endarg} - ${startarg} ))"
+}
+
+OPTIND=1
+while getopts "${optargs}" opt
+do	case "${opt}" in
+	f)	force=:;;
+	k)	keep=:;;
+	p)	noexec=:;;
+	q)	quiet='-quiet';;
+	r)	refinement="${therefinement}";;
+	R)	refinement='';;
+	m)	Push -c oftype '-of' "${OPTARG}";;
+	4)	codec="${OPTARG}";;
+	G)	noodml='';;
+	g)	noodml='-noodml';;
+	b)	brspec=:; br="${OPTARG}";;
+	M)	mbd="${OPTARG}";;
+	F)	Push vfadd "${OPTARG}";;
+	e)	Push -c endpos '-endpos' "${OPTARG}";;
+	E)	expand=1;;
+	c)	cropcmd=:
+		SetVars croph cropy "${OPTARG}";;
+	C)	cropcmd=:
+		SetVars cropw cropx "${OPTARG}";;
+	w)	cropcmd=:
+		SetVars croph cropy "${OPTARG}"
+		croph="$(( 400 + 16 * (${croph}) ))";;
+	W)	cropcmd=:
+		SetVars croph cropy "${OPTARG}"
+		croph="$(( 400 - 16 * (${croph}) ))";;
+	n)	cropcmd=:
+		SetVars cropw cropx '704:24';;
+	o)	cropcmd=:
+		SetVars cropw cropx '762:4'
+		SetVars croph cropy '568:6';;
+	U)	cropcmd=false;;
+	A)	SetVars aspectw aspecth "${OPTARG}";;
+	0)	sound='';;
+	1)	forcechan=1; amode=0; lamemode=3; CalcLamebr;;
+	3)	forcechan=1; lamemode=3
+		if [ "${OPTARG}" -eq 1 ]
+		then	amode=2
+		else	amode=3
+		fi
+		CalcLamebr;;
+	l)	soundencode=:; sound='l'; lametype='cbr';;
+	a)	soundencode=:; sound='l'; lametype='abr';;
+	B)	lbrspec=:; lamebr="${OPTARG}"; CalcLamebr;;
+	Q)	lamequality="${OPTARG}";;
+	'!')	sanity=false;;
+# Options with a different meaning for TV/File input
+	u)	if ${fromfile}
+		then	sound='c'
+			soundencode=false
+		else	# sound='p'# With pcm output, mplayer sometimes hangs the system!
+			sound='c'
+			soundencode=false
+		fi;;
+	H)	if ${fromfile}
+		then	Usage 1
+		else	hqdn=''
+		fi;;
+	2)	if ${fromfile}
+		then	keep=:
+		else	vver=''
+		fi;;
+	v)	if ${fromfile}
+		then	fromfile=false
+		else	fromfile=:
+		fi
+		SetDefaults;;
+	s)	if ${fromfile}
+		then	Push -c skips '-ss' "${OPTARG}"
+			SetStartEnd "${OPTARG}"
+		else	saturation="${OPTARG}"
+		fi;;
+	S)	if ${fromfile}
+		then	Push -c skipb '-sb' "${OPTARG}"
+		else	loudness="${OPTARG}"
+		fi;;
+	T)	loudnessplay="${OPTARG}";;
+# Special options for TV input
+	i)	inputnr="${OPTARG}";;
+	I)	inputchannel="${OPTARG}";;
+	d)	brightness="${OPTARG}";;
+	c)	contrast="${OPTARG}";;
+	h)	hue="${OPTARG}";;
+	L)	lb='';;
+	D)	device="${OPTARG}";;
+# Special options for File input
+	P)	totalpass="${OPTARG}";;
+	t)	turbolastpass="${OPTARG}";;
+	O)	alwaysout=:;;
+	z)	alsa=false;;
+	Z)	alsa=:;;
+	'.')	sound='p';;
+# The only remaining admissible options are "help" options:
+	*)	Usage 0;;
+	esac
+done
+shift $(( ${OPTIND} - 1 ))
+
+# Some sanity tests for frequent typing mistakes in usage
+
+if ${sanity}
+then	if [ "${totalpass}" -eq 1 ]
+	then	totalpass=0
+		Warning "Strange option: -P1
+Probably you want simple-pass-mode. Therefore I assume instead: -P0
+If you really want multi-pass-mode with only 1 pass use also option -#"
+	fi
+	${lbrspec} && ! ${soundencode} && \
+		Fatal "useless -B without soundencoding. Maybe you meant -b instead."
+fi
+
+BrTest() {
+	${sanity} && ${brspec} && \
+		Fatal "useless -b without encoding. Maybe you meant -s instead."
+}
+
+# The following function is used to print and/or execute a command
+
+doexec=''
+Echoexec() {
+	local quiettmp=''
+	if [ "${1}" = "-q" ]
+	then	quiettmp=1
+		shift
+	fi
+	Echo "${*}"
+	if ! ${noexec}
+	then	if [ -n "${quiettmp}" ]
+		then	${doexec} "${@}" >/dev/null 2>&1
+			execresult=${?}
+		else	${doexec} "${@}"
+			execresult=${?}
+		fi
+	fi
+}
+
+# Clean/Test intermediate files (not called for TV input)
+
+Clean() {
+	case "${1}" in
+	s)
+		set +f
+		set -- "${soundmagic}" analyse.log c*':'*trace*.txt
+		set -f
+		if ${force}
+		then	Echoexec rm -- "${@}"
+			return
+		fi
+		for cleani
+		do	test -r "${cleani}" && \
+				Fatal "${cleani} exists. This is obsoleted and may cause troubles."
+		done
+		return 0
+	;;
+	t)
+		if ${force}
+		then	Echoexec rm -- "${morepass}" "${morepassed}"
+			return
+		fi
+		for cleani in "${morepass}" "${morepassed}"
+		do	test -r "${cleani}" && \
+				Fatal "${cleani} exists. This is only admissible for higher passes."
+		done
+		return 0
+	;;
+	f)
+		cleani=false
+	;;
+	l)
+		cleani="${keep}"
+	;;
+	*)
+		Fatal "internal error: call of function Clean with bad argument ${1}"
+	;;
+	esac
+	${cleani} || Echoexec rm -- "${morepass}" "${morepassed}"
+}
+
+# Parse pass and infile arguments
+
+if ! ${fromfile}
+then	input='tv://'
+	[ "${inputchannel}" != '-' ] && input="${input}${inputchannel}"
+	passarg='v'
+else	[ ${#} -lt 1 ] && Usage
+	passarg="${1}"
+	if [ "${passarg}" = "0" ]
+	then	Clean f
+		exit 0
+	fi
+	shift
+
+	[ ${#} -lt 1 ] && Usage
+	input="${1}"
+	shift
+fi
+
+case "${input}" in
+-|*:/*)
+	# Special files are not tested for existence
+	:
+;;
+*)
+	[ -n "${input}" ] || Usage
+	${noexec} || test -r "${input}" || Usage
+;;
+esac
+
+# Parse outfile argument
+
+case "${passarg}" in
+-)
+	record=false
+	needname=false
+;;
+c)
+	record=:
+	needname=:
+;;
+v)
+	record=:
+	needname=:
+;;
+[0-9]*)
+	record=:
+	needname=:
+	frompass="${passarg%%-*}"
+	topass="${passarg##*-}"
+	# In earlier versions, "videoencode -P2 1 infile" automagically
+	# sent the output to /dev/null - hence no outfile argument.
+	# This was very confusing to the user.
+	# [ "${totalpass}" -gt 0 ] && [ "${topass}" -lt "${totalpass}" ] && \
+	#	 needname="${alwaysout}"
+;;
+*)
+	Usage
+;;
+esac
+if ${needname}
+then	[ ${#} -lt 1 ] && Usage
+	[ -n "${1}" ] || Usage
+	output="${1}"
+	if [ "${output}" = '-' ]
+	then	record=false
+	else	record=:
+		if test -r "${output}"
+		then	if ! test -b "${output}" && ! test -c "${output}"
+			then	if ${force}
+				then	Warning "file ${output} is overwritten on request"
+				else	Fatal "file ${output} already exists. Use -f to overwrite."
+				fi
+			fi
+		fi
+	fi
+	shift
+fi
+
+# Collect remaining arguments in add/addname
+
+Push -c add
+Push -c addname
+collectopt=:
+for collecti
+do	if ${collectopt}
+	then	if [ "${collecti}" = '--' ]
+		then	collectopt=false
+		else	Push add "${collecti}"
+		fi
+	else	Push addname "${collecti}"
+	fi
+done
+
+# If aspect correction is required, we build the corresponding command:
+
+if [ -n "${aspectw}" ] || [ -n "${aspecth}" ]
+then	if [ -z "${aspectw}" ]
+	then	if [ -n "${cropw}" ]
+		then	aspectw="${cropw}"
+		else	aspectw='720'
+		fi
+	fi
+	if [ -z "${aspecth}" ]
+	then	if [ -n "${croph}" ]
+		then	aspecth="${croph}"
+		else	aspecth='576'
+		fi
+	fi
+	if ${record}
+	then	Push -c aspect '-force-avi-aspect'
+	else	Push -c aspect '-aspect'
+	fi
+	Push aspect "${aspectw}:${aspecth}"
+fi
+
+# cropcmd is currently either false or : (depending on whether cropping is required).
+# We replace it by the correct value for the video filter.
+
+if ${cropcmd}
+then	if [ -n "${expand}" ]
+	then	cropcmd="expand"
+		expand=":"
+	else	cropcmd="crop"
+	fi
+	cropcmd="${cropcmd}=${cropw}:${croph}:${cropx}:${cropy}${expand}"
+else	cropcmd=''
+fi
+
+# Create the video filter chain depending on the arguments:
+
+if [ -n "${hqdn}" ] || [ -n "${lb}" ] || [ -n "${vfadd}" ]
+then	Push vfadd 'softskip'
+fi
+${record} && Push vfadd 'harddup'
+eval Push -c vfadd \${cropcmd} \${hqdn} \${lb} ${vfadd}
+
+CalcVF() {
+	if [ ${#} -eq 0 ]
+	then	Push -c vf
+		return
+	fi
+	vfadd=''
+	for vfi
+	do	vfadd="${vfadd},${vfi}"
+	done
+	Push -c vf '-vf' "${vfadd#,}"
+}
+eval "CalcVF ${vfadd}"
+
+# Set the alsa sound (only called for TV input)
+
+trapret=0
+MixerTrap() {
+	trap : EXIT HUP INT TERM
+	Echoexec -q amixer set Line mute
+	trap - EXIT HUP INT TERM
+	exit ${trapret}
+}
+
+Setsound() {
+	# Now we use alsa to set the sound. Of course, everything here depends
+	# on the alsa-version, the kernel-version and the soundcard.
+	if ${record}
+	then	Echoexec -q amixer set Mic mute nocap
+		Echoexec -q amixer set Aux mute nocap
+		Echoexec -q amixer set Line cap
+		# For some reason, in new versions of alsa (since kernel 2.6.*),
+		# the "cap" command sets only "value.0" of "Capture Source", not "value.1"
+		# The following command appears to set both simultaneously:
+		# Here, capture_source means "Line" (I know this from the comments in
+		# the "Capture Source" entry of /etc/asound generated by "alsactl store")
+		Echoexec -q amixer cset name="Capture Source" "line"
+		Echoexec -q amixer cset name="Input Source" "Line"
+		Echoexec -q amixer set Line "${loudnessplay}%" mute cap
+		Echoexec -q amixer set Capture "${loudness}%" mute cap
+	elif [ -n "${sound}" ]
+	then		Echoexec -q amixer set Mic mute
+		Echoexec -q amixer set Aux mute
+		Echoexec -q amixer set Line "${loudnessplay}%" unmute
+	else	# Watch with no sound
+		Echoexec -q amixer set Mic mute
+		Echoexec -q amixer set Aux mute
+		Echoexec -q amixer set Line mute
+	fi
+
+	# When *watching* video, the sound is stopped at the end or when breaking:
+	${record} || trap MixerTrap EXIT HUP INT TERM
+}
+
+# Pass is the main function calling mencoder/mplayer.
+# Its first argument is pass (the special value v means TV input)
+# If its second argument is "-e" then mencoder/mplayer is called with "exec".
+# Pass uses CalcSopt to calculate sound output options in sopt and tvaudio.
+
+CalcSopt() {
+	if [ -z "${sound}" ]
+	then	tvaudio='noaudio'
+		Push -c sopt '-nosound'
+		return
+	fi
+	if ${alsa}
+	then	tvaudio='alsa:'
+	else	tvaudio=''
+	fi
+	tvaudio="${tvaudio}audiorate=44100:forcechan=${forcechan}:amode=${amode}"
+	case "${1}" in
+	l)
+		Push -c sopt '-oac' 'mp3lame' '-lameopts' \
+			"${lametype}:br=${lamebreff}:aq=0:q=0:mode=${lamemode}"
+	;;
+	c)
+		Push -c sopt '-oac' 'copy'
+	;;
+	p)	Push -c sopt '-oac' 'pcm'
+	;;
+	esac
+}
+
+Pass() {
+	outputtmp="${output}"
+	lavcopts=''
+	currvpass=0
+	arg="${1}"
+	Push -c tvopt
+	case "${arg}" in
+	c)
+		CalcSopt "${sound}"
+		Push -c vopt 'copy'
+	;;
+	v)
+		CalcSopt "${sound}"
+		tvopt="driver=v4l${vver}"
+		[ -n "${device}" ] && tvopt="${tvopt}:device=${device}"
+		[ -n "${inputnr}" ] && tvopt="${tvopt}:input=${inputnr}"
+		[ -n "${carddimension}" ] && tvopt="${tvopt}:${carddimension}"
+		[ -n "${brightness}" ] && [ "${brightness}" -ne 0 ] \
+			&& tvopt="${tvopt}:brightness=${brightness}"
+		[ -n "${contrast}" ] && [ "${contrast}" -ne 0 ] \
+			&& tvopt="${tvopt}:contrast=${contrast}"
+		[ -n "${hue}" ] && [ "${hue}" -ne 0 ] \
+			&& tvopt="${tvopt}:hue=${hue}"
+		[ -n "${saturation}" ] && [ "${saturation}" -ne 0 ] \
+			&& tvopt="${tvopt}:saturation=${saturation}"
+		[ -n "${tvaudio}" ] && tvopt="${tvopt}:${tvaudio}"
+		Push -c tvopt '-tv' "${tvopt}"
+		lavcopts="vbitrate=${br}"
+	;;
+	-)
+		:
+	;;
+	*)
+		[ "${arg}" -gt 0 ] || Fatal "bad passnumber: ${arg}"
+		currvpass="${arg}"
+		lavcopts="vbitrate=${br}"
+		if [ "${totalpass}" -gt 0 ]
+		then	if [ "${arg}" -lt "${totalpass}" ]
+			then	# Do not encode the sound except in the last pass:
+				CalcSopt "c"
+				if [ "${arg}" -lt "${topass}" ]
+				then	${alwaysout} || outputtmp='/dev/null'
+				fi
+				[ "${arg}" -le "${turbolastpass}" ] && lavcopts="turbo:${lavcopts}"
+				[ "${arg}" -eq 2 ] && currvpass=3
+				lavcopts="${lavcopts}:vb_strategy=2"
+			else	CalcSopt "${sound}"
+			fi
+			[ "${currvpass}" -gt 3 ] && currvpass=3
+			lavcopts="vpass=${currvpass}:${lavcopts}"
+		else	CalcSopt "${sound}"
+			[ "${arg}" -eq 1 ] || Fatal "passnumber must be 1 for 1-pass mode"
+		fi;;
+	esac
+	if [ -n "${lavcopts}" ]
+	then	[ -n "${refinement}" ] && lavcopts="${refinement}:${lavcopts}"
+		v4mv=':v4mv'
+		case "${codec}" in
+		msmpeg4*|h261*)
+			v4mv='';;
+		esac
+		Push -c vopt 'lavc' '-lavcopts' "vcodec=${codec}:mbd=${mbd}${v4mv}:${lavcopts}"
+	fi
+	Echoexec date
+	[ "${currvpass}" -eq 3 ] && Echoexec cp -a -- "${morepass}" "${morepassed}"
+	[ "${2}" = '-e' ] && doexec=exec
+	if ${record}
+	then	eval Echoexec mencoder \${quiet} ${tvopt} -ovc ${vopt} ${vf} \
+			${oftype} ${aspect} \${noodml} ${sopt} \
+			${endpos} ${skips} ${skipb} ${add} \
+			-o \"\${outputtmp}\" -- \"\${input}\" ${addname}
+	else	eval Echoexec mplayer \${quiet} ${tvopt} ${vf} ${aspect} \
+			${skips} ${skipb} ${add} -- \"\${input}\" ${addname}
+	fi
+	retvalue=${execresult}
+	return ${retvalue}
+}
+
+Passes() {
+	local currpass
+	if [ "${1}" -lt 1 ] || [ "${2}" -lt 1 ] || [ "${2}" -lt "${1}" ]
+	then	Fatal "illegal passnumber"
+	fi
+	[ "${totalpass}" -gt 0 ] && [ "${2}" -gt "${totalpass}" ] && \
+		Fatal "passnumber ${2} larger than total number of passes (${totalpass})"
+	[ "${totalpass}" -gt 0 ] || [ "${2}" -eq 1 ] || \
+		Fatal "passnumber ${2} is not allowed in single-pass mode"
+	${sanity} && [ "${totalpass}" -gt 0 ] && [ "${2}" -lt "${totalpass}" ] && \
+		Fatal "last pass ${2} is less than total number of passes (${totalpass})
+This means that you have to encode the remaining passes later on.
+Maybe you want to use option -P to decrease the total number of passes.
+If you really meant what you typed, use in addition option -!"
+	Clean s || return 2
+	if [ "${1}" -eq 1 ]
+	then	Clean t || return 2
+	fi
+	currpass="${1}"
+	while [ "${currpass}" -le "${2}" ]
+	do	if [ "${totalpass}" -gt 0 ]
+		then	if [ "${totalpass}" -eq "${2}" ]
+			then	Verbose "Pass ${currpass}|${totalpass}"
+			else	Verbose "Pass ${currpass}|${2} of ${totalpass}"
+			fi
+		fi
+		Pass "${currpass}" || return ${retvalue}
+		currpass="$(( ${currpass} + 1 ))"
+	done
+	[ "${totalpass}" -gt 0 ] && [ "${2}" -lt "${totalpass}" ] && return 0
+	Clean l || return 2
+	return 0
+}
+
+# Now we call the above functions as required.
+
+retvalue=0
+if ! ${fromfile}
+then	Clean s && Clean t || return 2
+	Setsound
+	if ! ${record}
+	then	# If we do not record, we must not "exec" mplayer,
+		# because we have to silent the sound afterwards.
+		# (This is done automatically on exit by "trap", but this "trap" would
+		# not be executed after an "exec mplayer").
+		Pass v
+	else	Pass v -e
+	fi
+elif [ "${passarg}" = 'c' ]
+then	BrTest
+	Clean t
+	Pass c -e
+elif [ "${passarg}" = '-' ]
+then	BrTest
+	Pass - -e
+else	Passes "${frompass}" "${topass}"
+fi
+exit ${retvalue}

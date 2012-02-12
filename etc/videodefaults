@@ -1,0 +1,14 @@
+#! /usr/bin/env sh
+# This file is sourced by video/videoencode to set some defaults.
+# To understand it, look at the function SetDefaults in video/videoencode
+if ! ${fromfile}
+then	test -r /dev/videotv && device='/dev/videotv'
+	#alsa=:
+	#inputnr=2
+	#inputchannel='SE12'
+	#brightness='-25'
+	#br=1400
+	#hqdn=''
+	#loudness=55
+	#loudnessplay=100
+fi

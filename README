@@ -1,0 +1,18 @@
+(C) Martin Väth <martin@mvath.de>
+This project is under the BSD license.
+
+A frontend for using mplayer and mencoder as a video recorder.
+
+This POSIX script is a wrapper for mplayer (video) and mencoder (videoencode)
+to record from TV (typically with high redundancy) or
+to improve the encoding (in possibly several passes), respectively.
+
+To install these scripts simply copy the content of bin into your PATH
+and the content of etc into /etc or also into your PATH.
+The latter is supposed to be modified to the defaults which you want.
+
+To get help run in a shell
+	video -\?
+	videoencode -\?
+
+For Gentoo, there is an ebuild in the mv overlay (available by layman).
