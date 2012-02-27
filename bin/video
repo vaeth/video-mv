@@ -3,15 +3,15 @@
 
 set -f
 
-name="${0##*/}"
+name=${0##*/}
 soundmagic='frameno.avi'
 morepass='divx2pass.log'
 morepassed="${morepass}.bak"
 defpass=4
 therefinement='bidir_refine=4:dia=2'
-carddimension="width=768:height=576"
+carddimension='width=768:height=576'
 
-case "${name}" in
+case ${name} in
 *encod*|*file*|*conv*)
 	fromfile=:
 ;;
@@ -32,14 +32,14 @@ Message() {
 	Echo "${name}: ${*}" >&2
 }
 
+Warning() {
+	Message "warning: ${*}"
+}
+
 Fatal() {
 	Message "${*}"
 	trapret=2
 	exit 2
-}
-
-Warning() {
-	Message "warning: ${*}"
 }
 
 Usage() {
@@ -201,42 +201,42 @@ Audiostream:
 }
 
 Push() {
-	case "${1}" in
+	case ${1} in
 	-*)	shift
 		eval "${1}=''";;
 	esac
-	PushD_="${1}"
+	PushD_=${1}
 	shift
 	eval "for PushA_
 	do	[ -z \"\${${PushD_}}\" ] && ${PushD_}=\\' \
 			|| ${PushD_}=\"\${${PushD_}} '\"
-		PushB_=\"\${PushA_}\"
+		PushB_=\${PushA_}
 		while {
-			PushC_=\"\${PushB_%%\\'*}\"
+			PushC_=\${PushB_%%\\'*}
 			[ \"\${PushC_}\" != \"\${PushB_}\" ]
 		}
 		do	${PushD_}=\"\${${PushD_}}\${PushC_}'\\\\''\"
-			PushB_=\"\${PushB_#*\\'}\"
+			PushB_=\${PushB_#*\\'}
 		done
 		${PushD_}=\"\${${PushD_}}\${PushB_}'\"
 	done"
 }
 
 SetVars() {
-	case "${3}" in
+	case ${3} in
 	*:*)
-		eval "${1}=\"\${3%%:*}\"
-		${2}=\"\${3##*:}\""
+		eval "${1}=\${3%%:*}
+		${2}=\${3##*:}"
 		return;;
 	esac
-	eval "${1}=\"\${3}\"
+	eval "${1}=\${3}
 	${2}=''"
 }
 
 CalcLamebr() {
 	if [ "${forcechan}" -eq 1 ]
-	then	lamebreff="$(( ${lamebr} / 2 ))"
-	else	lamebreff="${lamebr}"
+	then	lamebreff=$(( ${lamebr} / 2 ))
+	else	lamebreff=${lamebr}
 	fi
 }
 
@@ -311,8 +311,8 @@ SetDefaults() {
 		sound='l'
 		soundencode=:
 		lamequality=0
-		totalpass="${defpass}"
-		refinement="${therefinement}"
+		totalpass=${defpass}
+		refinement=${therefinement}
 	fi
 	if test -r /etc/videodefaults
 	then	. /etc/videodefaults
@@ -325,8 +325,8 @@ SetDefaults
 # Parse the option arguments
 
 SetStartEnd() {
-	startarg="${1%%-*}"
-	endarg="${1##*-}"
+	startarg=${1%%-*}
+	endarg=${1##*-}
 	[ "${startarg}" = "${1}" ] && return
 	Push -c skips '-ss' "${startarg}"
 	Push -c endpos '-endpos' "$(( ${endarg} - ${startarg} ))"
@@ -334,19 +334,19 @@ SetStartEnd() {
 
 OPTIND=1
 while getopts "${optargs}" opt
-do	case "${opt}" in
+do	case ${opt} in
 	f)	force=:;;
 	k)	keep=:;;
 	p)	noexec=:;;
 	q)	quiet='-quiet';;
-	r)	refinement="${therefinement}";;
+	r)	refinement=${therefinement};;
 	R)	refinement='';;
 	m)	Push -c oftype '-of' "${OPTARG}";;
-	4)	codec="${OPTARG}";;
+	4)	codec=${OPTARG};;
 	G)	noodml='';;
 	g)	noodml='-noodml';;
-	b)	brspec=:; br="${OPTARG}";;
-	M)	mbd="${OPTARG}";;
+	b)	brspec=:; br=${OPTARG};;
+	M)	mbd=${OPTARG};;
 	F)	Push vfadd "${OPTARG}";;
 	e)	Push -c endpos '-endpos' "${OPTARG}";;
 	E)	expand=1;;
@@ -356,10 +356,10 @@ do	case "${opt}" in
 		SetVars cropw cropx "${OPTARG}";;
 	w)	cropcmd=:
 		SetVars croph cropy "${OPTARG}"
-		croph="$(( 400 + 16 * (${croph}) ))";;
+		croph=$(( 400 + 16 * (${croph}) ));;
 	W)	cropcmd=:
 		SetVars croph cropy "${OPTARG}"
-		croph="$(( 400 - 16 * (${croph}) ))";;
+		croph=$(( 400 - 16 * (${croph}) ));;
 	n)	cropcmd=:
 		SetVars cropw cropx '704:24';;
 	o)	cropcmd=:
@@ -368,17 +368,27 @@ do	case "${opt}" in
 	U)	cropcmd=false;;
 	A)	SetVars aspectw aspecth "${OPTARG}";;
 	0)	sound='';;
-	1)	forcechan=1; amode=0; lamemode=3; CalcLamebr;;
-	3)	forcechan=1; lamemode=3
+	1)	forcechan=1
+		amode=0
+		lamemode=3
+		CalcLamebr;;
+	3)	forcechan=1
+		lamemode=3
 		if [ "${OPTARG}" -eq 1 ]
 		then	amode=2
 		else	amode=3
 		fi
 		CalcLamebr;;
-	l)	soundencode=:; sound='l'; lametype='cbr';;
-	a)	soundencode=:; sound='l'; lametype='abr';;
-	B)	lbrspec=:; lamebr="${OPTARG}"; CalcLamebr;;
-	Q)	lamequality="${OPTARG}";;
+	l)	soundencode=:
+		sound='l'
+		lametype='cbr';;
+	a)	soundencode=:
+		sound='l'
+		lametype='abr';;
+	B)	lbrspec=:
+		lamebr=${OPTARG}
+		CalcLamebr;;
+	Q)	lamequality=${OPTARG};;
 	'!')	sanity=false;;
 # Options with a different meaning for TV/File input
 	u)	if ${fromfile}
@@ -404,24 +414,24 @@ do	case "${opt}" in
 	s)	if ${fromfile}
 		then	Push -c skips '-ss' "${OPTARG}"
 			SetStartEnd "${OPTARG}"
-		else	saturation="${OPTARG}"
+		else	saturation=${OPTARG}
 		fi;;
 	S)	if ${fromfile}
 		then	Push -c skipb '-sb' "${OPTARG}"
-		else	loudness="${OPTARG}"
+		else	loudness=${OPTARG}
 		fi;;
-	T)	loudnessplay="${OPTARG}";;
+	T)	loudnessplay=${OPTARG};;
 # Special options for TV input
-	i)	inputnr="${OPTARG}";;
-	I)	inputchannel="${OPTARG}";;
-	d)	brightness="${OPTARG}";;
-	c)	contrast="${OPTARG}";;
-	h)	hue="${OPTARG}";;
+	i)	inputnr=${OPTARG};;
+	I)	inputchannel=${OPTARG};;
+	d)	brightness=${OPTARG};;
+	c)	contrast=${OPTARG};;
+	h)	hue=${OPTARG};;
 	L)	lb='';;
-	D)	device="${OPTARG}";;
+	D)	device=${OPTARG};;
 # Special options for File input
-	P)	totalpass="${OPTARG}";;
-	t)	turbolastpass="${OPTARG}";;
+	P)	totalpass=${OPTARG};;
+	t)	turbolastpass=${OPTARG};;
 	O)	alwaysout=:;;
 	z)	alsa=false;;
 	Z)	alsa=:;;
@@ -473,7 +483,7 @@ Echoexec() {
 # Clean/Test intermediate files (not called for TV input)
 
 Clean() {
-	case "${1}" in
+	case ${1} in
 	s)
 		set +f
 		set -- "${soundmagic}" analyse.log c*':'*trace*.txt
@@ -503,7 +513,7 @@ Clean() {
 		cleani=false
 	;;
 	l)
-		cleani="${keep}"
+		cleani=${keep}
 	;;
 	*)
 		Fatal "internal error: call of function Clean with bad argument ${1}"
@@ -516,22 +526,22 @@ Clean() {
 
 if ! ${fromfile}
 then	input='tv://'
-	[ "${inputchannel}" != '-' ] && input="${input}${inputchannel}"
+	[ "${inputchannel}" != '-' ] && input=${input}${inputchannel}
 	passarg='v'
 else	[ ${#} -lt 1 ] && Usage
-	passarg="${1}"
-	if [ "${passarg}" = "0" ]
+	passarg=${1}
+	if [ "${passarg}" = '0' ]
 	then	Clean f
 		exit 0
 	fi
 	shift
 
 	[ ${#} -lt 1 ] && Usage
-	input="${1}"
+	input=${1}
 	shift
 fi
 
-case "${input}" in
+case ${input} in
 -|*:/*)
 	# Special files are not tested for existence
 	:
@@ -544,7 +554,7 @@ esac
 
 # Parse outfile argument
 
-case "${passarg}" in
+case ${passarg} in
 -)
 	record=false
 	needname=false
@@ -557,16 +567,16 @@ v)
 	record=:
 	needname=:
 ;;
-[0-9]*)
+[0123456789]*)
 	record=:
 	needname=:
-	frompass="${passarg%%-*}"
-	topass="${passarg##*-}"
+	frompass=${passarg%%-*}
+	topass=${passarg##*-}
 	# In earlier versions, "videoencode -P2 1 infile" automagically
 	# sent the output to /dev/null - hence no outfile argument.
 	# This was very confusing to the user.
 	# [ "${totalpass}" -gt 0 ] && [ "${topass}" -lt "${totalpass}" ] && \
-	#	 needname="${alwaysout}"
+	#	 needname=${alwaysout}
 ;;
 *)
 	Usage
@@ -575,7 +585,7 @@ esac
 if ${needname}
 then	[ ${#} -lt 1 ] && Usage
 	[ -n "${1}" ] || Usage
-	output="${1}"
+	output=${1}
 	if [ "${output}" = '-' ]
 	then	record=false
 	else	record=:
@@ -611,13 +621,13 @@ done
 if [ -n "${aspectw}" ] || [ -n "${aspecth}" ]
 then	if [ -z "${aspectw}" ]
 	then	if [ -n "${cropw}" ]
-		then	aspectw="${cropw}"
+		then	aspectw=${cropw}
 		else	aspectw='720'
 		fi
 	fi
 	if [ -z "${aspecth}" ]
 	then	if [ -n "${croph}" ]
-		then	aspecth="${croph}"
+		then	aspecth=${croph}
 		else	aspecth='576'
 		fi
 	fi
@@ -633,9 +643,9 @@ fi
 
 if ${cropcmd}
 then	if [ -n "${expand}" ]
-	then	cropcmd="expand"
-		expand=":"
-	else	cropcmd="crop"
+	then	cropcmd='expand'
+		expand=':'
+	else	cropcmd='crop'
 	fi
 	cropcmd="${cropcmd}=${cropw}:${croph}:${cropx}:${cropy}${expand}"
 else	cropcmd=''
@@ -684,8 +694,8 @@ Setsound() {
 		# The following command appears to set both simultaneously:
 		# Here, capture_source means "Line" (I know this from the comments in
 		# the "Capture Source" entry of /etc/asound generated by "alsactl store")
-		Echoexec -q amixer cset name="Capture Source" "line"
-		Echoexec -q amixer cset name="Input Source" "Line"
+		Echoexec -q amixer cset name='Capture Source' 'line'
+		Echoexec -q amixer cset name='Input Source' 'Line'
 		Echoexec -q amixer set Line "${loudnessplay}%" mute cap
 		Echoexec -q amixer set Capture "${loudness}%" mute cap
 	elif [ -n "${sound}" ]
@@ -718,7 +728,7 @@ CalcSopt() {
 	else	tvaudio=''
 	fi
 	tvaudio="${tvaudio}audiorate=44100:forcechan=${forcechan}:amode=${amode}"
-	case "${1}" in
+	case ${1} in
 	l)
 		Push -c sopt '-oac' 'mp3lame' '-lameopts' \
 			"${lametype}:br=${lamebreff}:aq=0:q=0:mode=${lamemode}"
@@ -732,12 +742,12 @@ CalcSopt() {
 }
 
 Pass() {
-	outputtmp="${output}"
+	outputtmp=${output}
 	lavcopts=''
 	currvpass=0
-	arg="${1}"
+	arg=${1}
 	Push -c tvopt
-	case "${arg}" in
+	case ${arg} in
 	c)
 		CalcSopt "${sound}"
 		Push -c vopt 'copy'
@@ -765,7 +775,7 @@ Pass() {
 	;;
 	*)
 		[ "${arg}" -gt 0 ] || Fatal "bad passnumber: ${arg}"
-		currvpass="${arg}"
+		currvpass=${arg}
 		lavcopts="vbitrate=${br}"
 		if [ "${totalpass}" -gt 0 ]
 		then	if [ "${arg}" -lt "${totalpass}" ]
@@ -788,7 +798,7 @@ Pass() {
 	if [ -n "${lavcopts}" ]
 	then	[ -n "${refinement}" ] && lavcopts="${refinement}:${lavcopts}"
 		v4mv=':v4mv'
-		case "${codec}" in
+		case ${codec} in
 		msmpeg4*|h261*)
 			v4mv='';;
 		esac
@@ -827,7 +837,7 @@ If you really meant what you typed, use in addition option -!"
 	if [ "${1}" -eq 1 ]
 	then	Clean t || return 2
 	fi
-	currpass="${1}"
+	currpass=${1}
 	while [ "${currpass}" -le "${2}" ]
 	do	if [ "${totalpass}" -gt 0 ]
 		then	if [ "${totalpass}" -eq "${2}" ]
@@ -836,7 +846,7 @@ If you really meant what you typed, use in addition option -!"
 			fi
 		fi
 		Pass "${currpass}" || return ${retvalue}
-		currpass="$(( ${currpass} + 1 ))"
+		currpass=$(( ${currpass} + 1 ))
 	done
 	[ "${totalpass}" -gt 0 ] && [ "${2}" -lt "${totalpass}" ] && return 0
 	Clean l || return 2

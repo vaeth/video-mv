@@ -47,7 +47,7 @@ quiet=''
 # Parse options
 
 while getopts 'qVhH?' opt
-do	case "${opt}" in
+do	case ${opt} in
 	q)	quiet='-q';;
 	V)	verbose=false;;
 	*)	Usage 0;;
@@ -58,17 +58,17 @@ shift $(( ${OPTIND} -1 ))
 
 # Interpret parameters
 
-base="${1##*/}"
-srcdir="${1%/*}"
-[ "${srcdir}" = "${1}" ] && srcdir="${PWD}"
+base=${1##*/}
+srcdir=${1%/*}
+[ "${srcdir}" = "${1}" ] && srcdir=${PWD}
 [ -n "${srcdir}" ] && test -d "${srcdir}" || Usage
 shift
 
-time="${1}"
+time=${1}
 [ ${#} -lt 1 ] && Usage
 shift
-len="${1}"
-case "${len}" in
+len=${1}
+case ${len} in
 0|-)	len=''
 	shift
 ;;
@@ -101,7 +101,7 @@ DoRecord() {
 	then	MyExec sleepto ${quiet} "${time}" || EarlyReturn
 		${verbose} && MyExec date
 		MyExec video ${quiet} "${len:+-e}" "${len}" "${@}" "${base}.avi"
-		rstat="${?}"
+		rstat=${?}
 	fi
 }
 
