@@ -42,7 +42,7 @@ The following options are available:
 # Default options
 
 verbose=:
-quiet=''
+quiet=
 
 # Parse options
 
@@ -69,7 +69,7 @@ time=${1}
 shift
 len=${1}
 case ${len} in
-0|-)	len=''
+0|-)	len=
 	shift
 ;;
 -*)	:

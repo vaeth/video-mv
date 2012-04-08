@@ -6,7 +6,7 @@ Echo() {
 }
 
 Fatal() {
-	printf '%s: %s\n' "${0##*/}" "${*}" >&2
+	Echo "${0##*/}: ${*}" >&2
 	exit 2
 }
 
@@ -37,7 +37,7 @@ curr=`date '+%s'` && [ -n "${curr}" ] || \
 	Fatal 'cannot determine current date'
 diff=`date -d "${*}" '+%s'` && [ -n "${diff}" ] || \
 	Fatal 'cannot determine destination date'
-[ "${diff}" -gt "${curr}" ] && diff=$(( ${diff} - ${curr} )) || diff=''
+[ "${diff}" -gt "${curr}" ] && diff=$(( ${diff} - ${curr} )) || diff=
 if ! ${quiet}
 then	if text=`date -d "${*}"` && [ -n "${text}" ]
 	then	Echo "Sleeping until ${text}"

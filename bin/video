@@ -203,7 +203,7 @@ Audiostream:
 Push() {
 	case ${1} in
 	-*)	shift
-		eval "${1}=''";;
+		eval ${1}=;;
 	esac
 	PushD_=${1}
 	shift
@@ -230,7 +230,7 @@ SetVars() {
 		return;;
 	esac
 	eval "${1}=\${3}
-	${2}=''"
+	${2}="
 }
 
 CalcLamebr() {
@@ -247,7 +247,7 @@ SetDefaults() {
 # General options
 	force=false
 	noexec=false
-	quiet=''
+	quiet=
 	alwaysout=false
 	sanity=:
 # Sound-related options
@@ -271,7 +271,7 @@ SetDefaults() {
 	Push -c vfadd
 	SetVars aspectw aspecth ':'
 	brspec=false
-	expand=''
+	expand=
 	loudnessplay=100
 	optargs='fpqrRm:4:Ggb:M:F:e:Ec:C:w:W:noUA:01ulaB:Q:vzZ.H!?'
 # Possibly differing defaults:
@@ -291,19 +291,19 @@ SetDefaults() {
 		cropcmd=:
 		SetVars cropw cropx '720:24'
 		SetVars croph cropy '544:16'
-		noodml=''
+		noodml=
 		sound='c'
 		soundencode=false
 		lamequality=1
 		totalpass=0
 		inputnr=0
 		inputchannel='-'
-		refinement=''
-		device=''
+		refinement=
+		device=
 	else	optargs="${optargs}O2kP:t:s:S:h"
 		br=800
-		lb=''
-		hqdn=''
+		lb=
+		hqdn=
 		cropcmd=false
 		SetVars cropw cropx ':'
 		SetVars croph cropy ':'
@@ -340,10 +340,10 @@ do	case ${opt} in
 	p)	noexec=:;;
 	q)	quiet='-quiet';;
 	r)	refinement=${therefinement};;
-	R)	refinement='';;
+	R)	refinement=;;
 	m)	Push -c oftype '-of' "${OPTARG}";;
 	4)	codec=${OPTARG};;
-	G)	noodml='';;
+	G)	noodml=;;
 	g)	noodml='-noodml';;
 	b)	brspec=:; br=${OPTARG};;
 	M)	mbd=${OPTARG};;
@@ -367,7 +367,7 @@ do	case ${opt} in
 		SetVars croph cropy '568:6';;
 	U)	cropcmd=false;;
 	A)	SetVars aspectw aspecth "${OPTARG}";;
-	0)	sound='';;
+	0)	sound=;;
 	1)	forcechan=1
 		amode=0
 		lamemode=3
@@ -400,11 +400,11 @@ do	case ${opt} in
 		fi;;
 	H)	if ${fromfile}
 		then	Usage 1
-		else	hqdn=''
+		else	hqdn=
 		fi;;
 	2)	if ${fromfile}
 		then	keep=:
-		else	vver=''
+		else	vver=
 		fi;;
 	v)	if ${fromfile}
 		then	fromfile=false
@@ -427,7 +427,7 @@ do	case ${opt} in
 	d)	brightness=${OPTARG};;
 	c)	contrast=${OPTARG};;
 	h)	hue=${OPTARG};;
-	L)	lb='';;
+	L)	lb=;;
 	D)	device=${OPTARG};;
 # Special options for File input
 	P)	totalpass=${OPTARG};;
@@ -462,9 +462,9 @@ BrTest() {
 
 # The following function is used to print and/or execute a command
 
-doexec=''
+doexec=
 Echoexec() {
-	local quiettmp=''
+	quiettmp=
 	if [ "${1}" = "-q" ]
 	then	quiettmp=1
 		shift
@@ -648,7 +648,7 @@ then	if [ -n "${expand}" ]
 	else	cropcmd='crop'
 	fi
 	cropcmd="${cropcmd}=${cropw}:${croph}:${cropx}:${cropy}${expand}"
-else	cropcmd=''
+else	cropcmd=
 fi
 
 # Create the video filter chain depending on the arguments:
@@ -657,14 +657,14 @@ if [ -n "${hqdn}" ] || [ -n "${lb}" ] || [ -n "${vfadd}" ]
 then	Push vfadd 'softskip'
 fi
 ${record} && Push vfadd 'harddup'
-eval Push -c vfadd \${cropcmd} \${hqdn} \${lb} ${vfadd}
+eval "Push -c vfadd \${cropcmd} \${hqdn} \${lb} ${vfadd}"
 
 CalcVF() {
 	if [ ${#} -eq 0 ]
 	then	Push -c vf
 		return
 	fi
-	vfadd=''
+	vfadd=
 	for vfi
 	do	vfadd="${vfadd},${vfi}"
 	done
@@ -725,7 +725,7 @@ CalcSopt() {
 	fi
 	if ${alsa}
 	then	tvaudio='alsa:'
-	else	tvaudio=''
+	else	tvaudio=
 	fi
 	tvaudio="${tvaudio}audiorate=44100:forcechan=${forcechan}:amode=${amode}"
 	case ${1} in
@@ -743,7 +743,7 @@ CalcSopt() {
 
 Pass() {
 	outputtmp=${output}
-	lavcopts=''
+	lavcopts=
 	currvpass=0
 	arg=${1}
 	Push -c tvopt
@@ -800,7 +800,7 @@ Pass() {
 		v4mv=':v4mv'
 		case ${codec} in
 		msmpeg4*|h261*)
-			v4mv='';;
+			v4mv=;;
 		esac
 		Push -c vopt 'lavc' '-lavcopts' "vcodec=${codec}:mbd=${mbd}${v4mv}:${lavcopts}"
 	fi
@@ -808,19 +808,18 @@ Pass() {
 	[ "${currvpass}" -eq 3 ] && Echoexec cp -a -- "${morepass}" "${morepassed}"
 	[ "${2}" = '-e' ] && doexec=exec
 	if ${record}
-	then	eval Echoexec mencoder \${quiet} ${tvopt} -ovc ${vopt} ${vf} \
+	then	eval "Echoexec mencoder \${quiet} ${tvopt} -ovc ${vopt} ${vf} \
 			${oftype} ${aspect} \${noodml} ${sopt} \
 			${endpos} ${skips} ${skipb} ${add} \
-			-o \"\${outputtmp}\" -- \"\${input}\" ${addname}
-	else	eval Echoexec mplayer \${quiet} ${tvopt} ${vf} ${aspect} \
-			${skips} ${skipb} ${add} -- \"\${input}\" ${addname}
+			-o \"\${outputtmp}\" -- \"\${input}\" ${addname}"
+	else	eval "Echoexec mplayer \${quiet} ${tvopt} ${vf} ${aspect} \
+			${skips} ${skipb} ${add} -- \"\${input}\" ${addname}"
 	fi
 	retvalue=${execresult}
 	return ${retvalue}
 }
 
 Passes() {
-	local currpass
 	if [ "${1}" -lt 1 ] || [ "${2}" -lt 1 ] || [ "${2}" -lt "${1}" ]
 	then	Fatal "illegal passnumber"
 	fi
