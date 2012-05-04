@@ -13,11 +13,9 @@ carddimension='width=768:height=576'
 
 case ${name} in
 *encod*|*file*|*conv*)
-	fromfile=:
-;;
+	fromfile=:;;
 *)
-	fromfile=false
-;;
+	fromfile=false;;
 esac
 
 Echo() {
@@ -41,6 +39,8 @@ Fatal() {
 	trapret=2
 	exit 2
 }
+
+. push.sh
 
 Usage() {
 	if ! ${fromfile}
@@ -200,32 +200,9 @@ Audiostream:
 	exit ${1:-2}
 }
 
-Push() {
-	case ${1} in
-	-*)	shift
-		eval ${1}=;;
-	esac
-	PushD_=${1}
-	shift
-	eval "for PushA_
-	do	[ -z \"\${${PushD_}}\" ] && ${PushD_}=\\' \
-			|| ${PushD_}=\"\${${PushD_}} '\"
-		PushB_=\${PushA_}
-		while {
-			PushC_=\${PushB_%%\\'*}
-			[ \"\${PushC_}\" != \"\${PushB_}\" ]
-		}
-		do	${PushD_}=\"\${${PushD_}}\${PushC_}'\\\\''\"
-			PushB_=\${PushB_#*\\'}
-		done
-		${PushD_}=\"\${${PushD_}}\${PushB_}'\"
-	done"
-}
-
 SetVars() {
 	case ${3} in
-	*:*)
-		eval "${1}=\${3%%:*}
+	*:*)	eval "${1}=\${3%%:*}
 		${2}=\${3##*:}"
 		return;;
 	esac
@@ -484,8 +461,7 @@ Echoexec() {
 
 Clean() {
 	case ${1} in
-	s)
-		set +f
+	s)	set +f
 		set -- "${soundmagic}" analyse.log c*':'*trace*.txt
 		set -f
 		if ${force}
@@ -496,10 +472,8 @@ Clean() {
 		do	test -r "${cleani}" && \
 				Fatal "${cleani} exists. This is obsoleted and may cause troubles."
 		done
-		return 0
-	;;
-	t)
-		if ${force}
+		return 0;;
+	t)	if ${force}
 		then	Echoexec rm -- "${morepass}" "${morepassed}"
 			return
 		fi
@@ -507,17 +481,10 @@ Clean() {
 		do	test -r "${cleani}" && \
 				Fatal "${cleani} exists. This is only admissible for higher passes."
 		done
-		return 0
-	;;
-	f)
-		cleani=false
-	;;
-	l)
-		cleani=${keep}
-	;;
-	*)
-		Fatal "internal error: call of function Clean with bad argument ${1}"
-	;;
+		return 0;;
+	f)	cleani=false;;
+	l)	cleani=${keep};;
+	*)	Fatal "internal error: call of function Clean with bad argument ${1}";;
 	esac
 	${cleani} || Echoexec rm -- "${morepass}" "${morepassed}"
 }
@@ -544,12 +511,10 @@ fi
 case ${input} in
 -|*:/*)
 	# Special files are not tested for existence
-	:
-;;
+	:;;
 *)
 	[ -n "${input}" ] || Usage
-	${noexec} || test -r "${input}" || Usage
-;;
+	${noexec} || test -r "${input}" || Usage;;
 esac
 
 # Parse outfile argument
@@ -557,30 +522,25 @@ esac
 case ${passarg} in
 -)
 	record=false
-	needname=false
-;;
+	needname=false;;
 c)
 	record=:
-	needname=:
-;;
+	needname=:;;
 v)
 	record=:
-	needname=:
-;;
+	needname=:;;
 [0123456789]*)
 	record=:
 	needname=:
 	frompass=${passarg%%-*}
-	topass=${passarg##*-}
+	topass=${passarg##*-};;
 	# In earlier versions, "videoencode -P2 1 infile" automagically
 	# sent the output to /dev/null - hence no outfile argument.
 	# This was very confusing to the user.
 	# [ "${totalpass}" -gt 0 ] && [ "${topass}" -lt "${totalpass}" ] && \
-	#	 needname=${alwaysout}
-;;
+	#	needname=${alwaysout}
 *)
-	Usage
-;;
+	Usage;;
 esac
 if ${needname}
 then	[ ${#} -lt 1 ] && Usage
@@ -729,15 +689,10 @@ CalcSopt() {
 	fi
 	tvaudio="${tvaudio}audiorate=44100:forcechan=${forcechan}:amode=${amode}"
 	case ${1} in
-	l)
-		Push -c sopt '-oac' 'mp3lame' '-lameopts' \
-			"${lametype}:br=${lamebreff}:aq=0:q=0:mode=${lamemode}"
-	;;
-	c)
-		Push -c sopt '-oac' 'copy'
-	;;
-	p)	Push -c sopt '-oac' 'pcm'
-	;;
+	l)	Push -c sopt '-oac' 'mp3lame' '-lameopts' \
+			"${lametype}:br=${lamebreff}:aq=0:q=0:mode=${lamemode}"	;;
+	c)	Push -c sopt '-oac' 'copy'	;;
+	p)	Push -c sopt '-oac' 'pcm'	;;
 	esac
 }
 
@@ -748,12 +703,9 @@ Pass() {
 	arg=${1}
 	Push -c tvopt
 	case ${arg} in
-	c)
-		CalcSopt "${sound}"
-		Push -c vopt 'copy'
-	;;
-	v)
-		CalcSopt "${sound}"
+	c)	CalcSopt "${sound}"
+		Push -c vopt 'copy';;
+	v)	CalcSopt "${sound}"
 		tvopt="driver=v4l${vver}"
 		[ -n "${device}" ] && tvopt="${tvopt}:device=${device}"
 		[ -n "${inputnr}" ] && tvopt="${tvopt}:input=${inputnr}"
@@ -768,13 +720,9 @@ Pass() {
 			&& tvopt="${tvopt}:saturation=${saturation}"
 		[ -n "${tvaudio}" ] && tvopt="${tvopt}:${tvaudio}"
 		Push -c tvopt '-tv' "${tvopt}"
-		lavcopts="vbitrate=${br}"
-	;;
-	-)
-		:
-	;;
-	*)
-		[ "${arg}" -gt 0 ] || Fatal "bad passnumber: ${arg}"
+		lavcopts="vbitrate=${br}";;
+	-)	:;;
+	*)	[ "${arg}" -gt 0 ] || Fatal "bad passnumber: ${arg}"
 		currvpass=${arg}
 		lavcopts="vbitrate=${br}"
 		if [ "${totalpass}" -gt 0 ]

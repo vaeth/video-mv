@@ -70,12 +70,9 @@ shift
 len=${1}
 case ${len} in
 0|-)	len=
-	shift
-;;
--*)	:
-;;
-*)	[ ${#} -ge 1 ] && shift
-;;
+	shift;;
+-*)	:;;
+*)	[ ${#} -ge 1 ] && shift;;
 esac
 
 MyExec() {
@@ -85,7 +82,7 @@ MyExec() {
 
 MyCd() {
 	${verbose} && Echo "cd ${1}"
-	cd -- "${1}" >/dev/null 2>&1 || Fatal "cannot cd to ${1}"
+	cd "${1}" >/dev/null 2>&1 || Fatal "cannot cd to ${1}"
 }
 
 EarlyReturn() {
