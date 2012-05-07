@@ -448,7 +448,7 @@ Echoexec() {
 	fi
 	Echo "${*}"
 	if ! ${noexec}
-	then	if [ -n "${quiettmp}" ]
+	then	if [ -n "${quiettmp:++}" ]
 		then	${doexec} "${@}" >/dev/null 2>&1
 			execresult=${?}
 		else	${doexec} "${@}"
@@ -513,7 +513,7 @@ case ${input} in
 	# Special files are not tested for existence
 	:;;
 *)
-	[ -n "${input}" ] || Usage
+	[ -n "${input:++}" ] || Usage
 	${noexec} || test -r "${input}" || Usage;;
 esac
 
@@ -544,7 +544,7 @@ v)
 esac
 if ${needname}
 then	[ ${#} -lt 1 ] && Usage
-	[ -n "${1}" ] || Usage
+	[ -n "${1:++}" ] || Usage
 	output=${1}
 	if [ "${output}" = '-' ]
 	then	record=false
@@ -578,15 +578,15 @@ done
 
 # If aspect correction is required, we build the corresponding command:
 
-if [ -n "${aspectw}" ] || [ -n "${aspecth}" ]
-then	if [ -z "${aspectw}" ]
-	then	if [ -n "${cropw}" ]
+if [ -n "${aspectw:++}" ] || [ -n "${aspecth:++}" ]
+then	if [ -z "${aspectw:++}" ]
+	then	if [ -n "${cropw:++}" ]
 		then	aspectw=${cropw}
 		else	aspectw='720'
 		fi
 	fi
-	if [ -z "${aspecth}" ]
-	then	if [ -n "${croph}" ]
+	if [ -z "${aspecth:++}" ]
+	then	if [ -n "${croph:++}" ]
 		then	aspecth=${croph}
 		else	aspecth='576'
 		fi
@@ -602,7 +602,7 @@ fi
 # We replace it by the correct value for the video filter.
 
 if ${cropcmd}
-then	if [ -n "${expand}" ]
+then	if [ -n "${expand:++}" ]
 	then	cropcmd='expand'
 		expand=':'
 	else	cropcmd='crop'
@@ -613,7 +613,7 @@ fi
 
 # Create the video filter chain depending on the arguments:
 
-if [ -n "${hqdn}" ] || [ -n "${lb}" ] || [ -n "${vfadd}" ]
+if [ -n "${hqdn:++}" ] || [ -n "${lb:++}" ] || [ -n "${vfadd:++}" ]
 then	Push vfadd 'softskip'
 fi
 ${record} && Push vfadd 'harddup'
@@ -658,7 +658,7 @@ Setsound() {
 		Echoexec -q amixer cset name='Input Source' 'Line'
 		Echoexec -q amixer set Line "${loudnessplay}%" mute cap
 		Echoexec -q amixer set Capture "${loudness}%" mute cap
-	elif [ -n "${sound}" ]
+	elif [ -n "${sound:++}" ]
 	then		Echoexec -q amixer set Mic mute
 		Echoexec -q amixer set Aux mute
 		Echoexec -q amixer set Line "${loudnessplay}%" unmute
@@ -678,7 +678,7 @@ Setsound() {
 # Pass uses CalcSopt to calculate sound output options in sopt and tvaudio.
 
 CalcSopt() {
-	if [ -z "${sound}" ]
+	if [ -z "${sound:++}" ]
 	then	tvaudio='noaudio'
 		Push -c sopt '-nosound'
 		return
@@ -707,18 +707,18 @@ Pass() {
 		Push -c vopt 'copy';;
 	v)	CalcSopt "${sound}"
 		tvopt="driver=v4l${vver}"
-		[ -n "${device}" ] && tvopt="${tvopt}:device=${device}"
-		[ -n "${inputnr}" ] && tvopt="${tvopt}:input=${inputnr}"
-		[ -n "${carddimension}" ] && tvopt="${tvopt}:${carddimension}"
-		[ -n "${brightness}" ] && [ "${brightness}" -ne 0 ] \
+		[ -z "${device:++}" ] || tvopt="${tvopt}:device=${device}"
+		[ -z "${inputnr:++}" ] || tvopt="${tvopt}:input=${inputnr}"
+		[ -z "${carddimension:++}" ] || tvopt="${tvopt}:${carddimension}"
+		[ -n "${brightness:++}" ] && [ "${brightness}" -ne 0 ] \
 			&& tvopt="${tvopt}:brightness=${brightness}"
-		[ -n "${contrast}" ] && [ "${contrast}" -ne 0 ] \
+		[ -n "${contrast:++}" ] && [ "${contrast}" -ne 0 ] \
 			&& tvopt="${tvopt}:contrast=${contrast}"
-		[ -n "${hue}" ] && [ "${hue}" -ne 0 ] \
+		[ -n "${hue:++}" ] && [ "${hue}" -ne 0 ] \
 			&& tvopt="${tvopt}:hue=${hue}"
-		[ -n "${saturation}" ] && [ "${saturation}" -ne 0 ] \
+		[ -n "${saturation:++}" ] && [ "${saturation}" -ne 0 ] \
 			&& tvopt="${tvopt}:saturation=${saturation}"
-		[ -n "${tvaudio}" ] && tvopt="${tvopt}:${tvaudio}"
+		[ -z "${tvaudio:++}" ] || tvopt="${tvopt}:${tvaudio}"
 		Push -c tvopt '-tv' "${tvopt}"
 		lavcopts="vbitrate=${br}";;
 	-)	:;;
@@ -743,8 +743,8 @@ Pass() {
 			[ "${arg}" -eq 1 ] || Fatal "passnumber must be 1 for 1-pass mode"
 		fi;;
 	esac
-	if [ -n "${lavcopts}" ]
-	then	[ -n "${refinement}" ] && lavcopts="${refinement}:${lavcopts}"
+	if [ -n "${lavcopts:++}" ]
+	then	[ -n "${refinement:++}" ] && lavcopts="${refinement}:${lavcopts}"
 		v4mv=':v4mv'
 		case ${codec} in
 		msmpeg4*|h261*)
