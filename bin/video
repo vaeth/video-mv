@@ -17,6 +17,12 @@ case ${name} in
 *)
 	fromfile=false;;
 esac
+case ${name} in
+*av*)
+	mplayer=false;;
+*)
+	mplayer=:;;
+esac
 
 Echo() {
 	printf '%s\n' "${*}"
@@ -90,6 +96,9 @@ use \"c\" with soundencoding options and then encode the resulting file."
 The following options are available:
 
 Various:
+-@   Use experimentally libav instead of mplayer/mencoder.
+     This also resets all other options to a (sometimes different) default.
+     Currently, not all other options/modes are supported with this option.
 -f   Force overwrite of existing output file
 -p   Print mencoder call instead of executing (so you can edit)
 -#   Skip most sanity checks for the options
@@ -250,7 +259,7 @@ SetDefaults() {
 	brspec=false
 	expand=
 	loudnessplay=100
-	optargs='fpqrRm:4:Ggb:M:F:e:Ec:C:w:W:noUA:01ulaB:Q:vzZ.H!?'
+	optargs='@fpqrRm:4:Ggb:M:F:e:Ec:C:w:W:noUA:01ulaB:Q:vzZ.H!?'
 # Possibly differing defaults:
 	if ! ${fromfile}
 	then	optargs="${optargs}L23:i:d:k:h:s:S:I:V:D:"
@@ -312,6 +321,8 @@ SetStartEnd() {
 OPTIND=1
 while getopts "${optargs}" opt
 do	case ${opt} in
+	'@')	mplayer=false
+		SetDefaults;;
 	f)	force=:;;
 	k)	keep=:;;
 	p)	noexec=:;;
@@ -491,11 +502,12 @@ Clean() {
 
 # Parse pass and infile arguments
 
+Push -c input
 if ! ${fromfile}
-then	input='tv://'
-	[ "${inputchannel}" != '-' ] && input=${input}${inputchannel}
+then	inputfile='tv://'
+	[ "${inputchannel}" = '-' ] || inputfile=${inputfile}${inputchannel}
 	passarg='v'
-else	[ ${#} -lt 1 ] && Usage
+else	[ ${#} -ge 1 ] || Usage
 	passarg=${1}
 	if [ "${passarg}" = '0' ]
 	then	Clean f
@@ -503,18 +515,24 @@ else	[ ${#} -lt 1 ] && Usage
 	fi
 	shift
 
-	[ ${#} -lt 1 ] && Usage
-	input=${1}
+	[ ${#} -ge 1 ] || Usage
+	inputfile=${1}
 	shift
 fi
 
-case ${input} in
--|*:/*)
+case ${inputfile} in
+-)
 	# Special files are not tested for existence
 	:;;
+*:/*)
+	${mplayer} && Push input -- "${inputfile}";;
 *)
-	[ -n "${input:++}" ] || Usage
-	${noexec} || test -r "${input}" || Usage;;
+	[ -n "${inputfile:++}" ] || Usage
+	${noexec} || test -r "${inputfile}" || Usage
+	if ${mplayer} || ! ${dorecord}
+	then	Push input -- "${inputfile}"
+	else	Push input -i "${inputfile}"
+	fi;;
 esac
 
 # Parse outfile argument
@@ -659,7 +677,7 @@ Setsound() {
 		Echoexec -q amixer set Line "${loudnessplay}%" mute cap
 		Echoexec -q amixer set Capture "${loudness}%" mute cap
 	elif [ -n "${sound:++}" ]
-	then		Echoexec -q amixer set Mic mute
+	then	Echoexec -q amixer set Mic mute
 		Echoexec -q amixer set Aux mute
 		Echoexec -q amixer set Line "${loudnessplay}%" unmute
 	else	# Watch with no sound
@@ -678,9 +696,14 @@ Setsound() {
 # Pass uses CalcSopt to calculate sound output options in sopt and tvaudio.
 
 CalcSopt() {
+	Push -c sopt
+	if ! ${mplayer}
+	then	CalcSoptLibav "${@}"
+		return
+	fi
 	if [ -z "${sound:++}" ]
 	then	tvaudio='noaudio'
-		Push -c sopt '-nosound'
+		Push sopt '-nosound'
 		return
 	fi
 	if ${alsa}
@@ -689,10 +712,27 @@ CalcSopt() {
 	fi
 	tvaudio="${tvaudio}audiorate=44100:forcechan=${forcechan}:amode=${amode}"
 	case ${1} in
-	l)	Push -c sopt '-oac' 'mp3lame' '-lameopts' \
-			"${lametype}:br=${lamebreff}:aq=0:q=0:mode=${lamemode}"	;;
-	c)	Push -c sopt '-oac' 'copy'	;;
-	p)	Push -c sopt '-oac' 'pcm'	;;
+	l)	Push sopt '-oac' 'mp3lame' '-lameopts' \
+			"${lametype}:br=${lamebreff}:aq=0:q=0:mode=${lamemode}";;
+	c)	Push sopt '-oac' 'copy';;
+	p)	Push sopt '-oac' 'pcm';;
+	esac
+}
+
+CalcSoptLibav() {
+	if [ -z "${sound:++}" ]
+	then	Push sopt '-an'
+	fi
+	if ${alsa}
+	then	Push sopt '-f' 'alsa' '-i' 'hw:0'
+	else	Push sopt '-f' 'oss' '-i' '/dev/dsp'
+	fi
+	Push sopt '-ar' '44100'
+	Push sopt '-ac' "${forcechan}"
+	case ${1} in
+	l)	Push sopt '-c:a' 'libmp3lame' '-aq 0' "${lamebreff}k" '-mode' "{lamemode}";;
+	p)	Push sopt '-c:a' 'pcm_u8';;
+	c)	Push sopt '-c:a' 'pcm_u8';;
 	esac
 }
 
@@ -706,29 +746,47 @@ Pass() {
 	c)	CalcSopt "${sound}"
 		Push -c vopt 'copy';;
 	v)	CalcSopt "${sound}"
-		tvopt="driver=v4l${vver}"
-		[ -z "${device:++}" ] || tvopt="${tvopt}:device=${device}"
-		[ -z "${inputnr:++}" ] || tvopt="${tvopt}:input=${inputnr}"
-		[ -z "${carddimension:++}" ] || tvopt="${tvopt}:${carddimension}"
-		[ -n "${brightness:++}" ] && [ "${brightness}" -ne 0 ] \
-			&& tvopt="${tvopt}:brightness=${brightness}"
-		[ -n "${contrast:++}" ] && [ "${contrast}" -ne 0 ] \
-			&& tvopt="${tvopt}:contrast=${contrast}"
-		[ -n "${hue:++}" ] && [ "${hue}" -ne 0 ] \
-			&& tvopt="${tvopt}:hue=${hue}"
-		[ -n "${saturation:++}" ] && [ "${saturation}" -ne 0 ] \
-			&& tvopt="${tvopt}:saturation=${saturation}"
-		[ -z "${tvaudio:++}" ] || tvopt="${tvopt}:${tvaudio}"
-		Push -c tvopt '-tv' "${tvopt}"
-		lavcopts="vbitrate=${br}";;
+		if ${mplayer}
+		then	tvopt="driver=v4l${vver}"
+			[ -z "${device:++}" ] || tvopt="${tvopt}:device=${device}"
+			[ -z "${inputnr:++}" ] || tvopt="${tvopt}:input=${inputnr}"
+			[ -z "${carddimension:++}" ] || tvopt="${tvopt}:${carddimension}"
+			[ -n "${brightness:++}" ] && [ "${brightness}" -ne 0 ] \
+				&& tvopt="${tvopt}:brightness=${brightness}"
+			[ -n "${contrast:++}" ] && [ "${contrast}" -ne 0 ] \
+				&& tvopt="${tvopt}:contrast=${contrast}"
+			[ -n "${hue:++}" ] && [ "${hue}" -ne 0 ] \
+				&& tvopt="${tvopt}:hue=${hue}"
+			[ -n "${saturation:++}" ] && [ "${saturation}" -ne 0 ] \
+				&& tvopt="${tvopt}:saturation=${saturation}"
+			[ -z "${tvaudio:++}" ] || tvopt="${tvopt}:${tvaudio}"
+			Push -c tvopt '-tv' "${tvopt}"
+			lavcopts="vbitrate=${br}"
+		else	Push -c tvopt -f "video4linux${vver}"
+			[ -z "${inputnr:++}" ] || Push tvopt '-channel' "${inputnr}"
+			[ -n "${brightness:++}" ] && [ "${brightness}" -ne 0 ] \
+				&& : Push tvopt -brightness "${brightness}"
+			[ -n "${contrast:++}" ] && [ "${contrast}" -ne 0 ] \
+				&& : Push tvopt -contrast "${contrast}"
+			[ -n "${hue:++}" ] && [ "${hue}" -ne 0 ] \
+				&& : Push tvopt -hue "${hue}"
+			[ -n "${saturation:++}" ] && [ "${saturation}" -ne 0 ] \
+				&& : Push tvopt -saturation "${saturation}"
+			! ${record} || Push tvopt '-i'
+			Push tvopt "${device:-/dev/video0}"
+			Push -c recopt '-b:v' "${br}k"
+		fi;;
 	-)	:;;
 	*)	[ "${arg}" -gt 0 ] || Fatal "bad passnumber: ${arg}"
 		currvpass=${arg}
-		lavcopts="vbitrate=${br}"
+		if ${mplayer}
+		then	lavcopts="vbitrate=${br}"
+		else	Push -c recopt '-b:v' "${br}k"
+		fi
 		if [ "${totalpass}" -gt 0 ]
 		then	if [ "${arg}" -lt "${totalpass}" ]
 			then	# Do not encode the sound except in the last pass:
-				CalcSopt "c"
+				CalcSopt 'c'
 				if [ "${arg}" -lt "${topass}" ]
 				then	${alwaysout} || outputtmp='/dev/null'
 				fi
@@ -750,18 +808,40 @@ Pass() {
 		msmpeg4*|h261*)
 			v4mv=;;
 		esac
-		Push -c vopt 'lavc' '-lavcopts' "vcodec=${codec}:mbd=${mbd}${v4mv}:${lavcopts}"
+		if ${mplayer}
+		then	Push -c vopt 'lavc' '-lavcopts' "vcodec=${codec}:mbd=${mbd}${v4mv}:${lavcopts}"
+		else	ifstmp=${IFS}
+			Push -c vopt
+			IFS=':'
+			for lavcopt in ${lavcopts}
+			do	lavcopta=${lavcopt#*=}
+				case ${lavcopta} in
+				v4mv)	continue;;
+				esac
+				Push vopt "${lavcopta}" "${lavcopt%%*=}"
+			done
+			IFS=${ifstmp}
+		fi
 	fi
 	Echoexec date
 	[ "${currvpass}" -eq 3 ] && Echoexec cp -a -- "${morepass}" "${morepassed}"
 	[ "${2}" = '-e' ] && doexec=exec
 	if ${record}
-	then	eval "Echoexec mencoder \${quiet} ${tvopt} -ovc ${vopt} ${vf} \
+	then	if ${mplayer}
+		then	eval "Echoexec mencoder \${quiet} ${tvopt} -ovc ${vopt} ${vf} \
 			${oftype} ${aspect} \${noodml} ${sopt} \
 			${endpos} ${skips} ${skipb} ${add} \
-			-o \"\${outputtmp}\" -- \"\${input}\" ${addname}"
-	else	eval "Echoexec mplayer \${quiet} ${tvopt} ${vf} ${aspect} \
-			${skips} ${skipb} ${add} -- \"\${input}\" ${addname}"
+			-o \"\${outputtmp}\" ${input} ${addname}"
+		else	eval "Echoexec avconv \${quiet} ${tvopt} ${vf} \
+			${oftype} ${aspect} \${noodml} ${sopt} \
+			${endpos} ${skips} ${skipb} ${add} ${recopt} \
+			-- \"\${outputtmp}\""
+		fi
+	elif ${mplayer}
+	then	eval "Echoexec mplayer \${quiet} ${tvopt} ${vf} ${aspect} \
+			${skips} ${skipb} ${add} ${input} ${addname}"
+	else	eval "Echoexec avplay \${quiet} ${tvopt} ${vf} ${aspect} \
+			${skips} ${skipb} ${add} ${input}"
 	fi
 	retvalue=${execresult}
 	return ${retvalue}
@@ -769,7 +849,7 @@ Pass() {
 
 Passes() {
 	if [ "${1}" -lt 1 ] || [ "${2}" -lt 1 ] || [ "${2}" -lt "${1}" ]
-	then	Fatal "illegal passnumber"
+	then	Fatal 'illegal passnumber'
 	fi
 	[ "${totalpass}" -gt 0 ] && [ "${2}" -gt "${totalpass}" ] && \
 		Fatal "passnumber ${2} larger than total number of passes (${totalpass})"
