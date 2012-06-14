@@ -97,7 +97,7 @@ DoRecord() {
 	if [ -n "${time}" ]
 	then	MyExec sleepto ${quiet} "${time}" || EarlyReturn
 		${verbose} && MyExec date
-		MyExec video ${quiet} "${len:+-e}" "${len}" "${@}" "${base}.avi"
+		MyExec video ${quiet} ${len:+-e} ${len} "${@}" "${base}.avi"
 		rstat=${?}
 	fi
 }
