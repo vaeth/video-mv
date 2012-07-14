@@ -18,7 +18,7 @@ case ${name} in
 	fromfile=false;;
 esac
 case ${name} in
-*av*)
+*ff*|*av*)
 	mplayer=false;;
 *)
 	mplayer=:;;
@@ -96,7 +96,7 @@ use \"c\" with soundencoding options and then encode the resulting file."
 The following options are available:
 
 Various:
--@   Use experimentally libav instead of mplayer/mencoder.
+-@   Use experimentally ffmpeg/libav instead of mplayer/mencoder.
      This also resets all other options to a (sometimes different) default.
      Currently, not all other options/modes are supported with this option.
 -f   Force overwrite of existing output file
@@ -430,6 +430,15 @@ do	case ${opt} in
 done
 shift $(( ${OPTIND} - 1 ))
 
+if ! ${mplayer}
+then	if command -v ffmpeg >/dev/null 2>&1
+	then	ffmpeg=:
+		lb=
+	else	ffmpeg=false
+	fi
+else	ffmpeg=false
+fi
+
 # Some sanity tests for frequent typing mistakes in usage
 
 if ${sanity}
@@ -631,7 +640,7 @@ fi
 
 # Create the video filter chain depending on the arguments:
 
-if [ -n "${hqdn:++}" ] || [ -n "${lb:++}" ] || [ -n "${vfadd:++}" ]
+if [ -n "${hqdn:++}" ] || [ -n "${lb:++}" ] || [ -n "${vfadd:++}" ] && ! ${ffmpeg}
 then	Push vfadd 'softskip'
 fi
 ${record} && Push vfadd 'harddup'
@@ -698,7 +707,7 @@ Setsound() {
 CalcSopt() {
 	Push -c sopt
 	if ! ${mplayer}
-	then	CalcSoptLibav "${@}"
+	then	CalcSoptFFmpeg "${@}"
 		return
 	fi
 	if [ -z "${sound:++}" ]
@@ -719,7 +728,7 @@ CalcSopt() {
 	esac
 }
 
-CalcSoptLibav() {
+CalcSoptFFmpeg() {
 	if [ -z "${sound:++}" ]
 	then	Push sopt '-an'
 	fi
@@ -832,6 +841,11 @@ Pass() {
 			${oftype} ${aspect} \${noodml} ${sopt} \
 			${endpos} ${skips} ${skipb} ${add} \
 			-o \"\${outputtmp}\" ${input} ${addname}"
+		elif ${ffmpeg}
+		then	eval "Echoexec ffmpeg \${quiet} ${tvopt} ${vf} \
+			${oftype} ${aspect} \${noodml} ${sopt} \
+			${endpos} ${skips} ${skipb} ${add} ${recopt} \
+			-- \"\${outputtmp}\""
 		else	eval "Echoexec avconv \${quiet} ${tvopt} ${vf} \
 			${oftype} ${aspect} \${noodml} ${sopt} \
 			${endpos} ${skips} ${skipb} ${add} ${recopt} \
@@ -840,6 +854,9 @@ Pass() {
 	elif ${mplayer}
 	then	eval "Echoexec mplayer \${quiet} ${tvopt} ${vf} ${aspect} \
 			${skips} ${skipb} ${add} ${input} ${addname}"
+	elif ${ffmpeg}
+	then	eval "Echoexec ffplay \${quiet} ${tvopt} ${vf} ${aspect} \
+			${skips} ${skipb} ${add} ${input}"
 	else	eval "Echoexec avplay \${quiet} ${tvopt} ${vf} ${aspect} \
 			${skips} ${skipb} ${add} ${input}"
 	fi
