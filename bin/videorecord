@@ -31,11 +31,13 @@ All additional arguments are passed as options to the video script.
 Typical examples are:
   -d-20   Darker by 20
   -f      Force overwriting existing file
-  -g      Do not add
+  -g      No ODML headers
 
 The following options are available:
-  -q      Be quiet
-  -V      Be not very verbose"
+  -q        Be quiet
+  -V        Be not very verbose
+  -T[pfsSH] Pass the corresponding option(s) to the title script.
+            H means that the title script is not used."
 	exit ${1:-1}
 }
 
@@ -43,13 +45,15 @@ The following options are available:
 
 verbose=:
 quiet=
+titleopt=
 
 # Parse options
 
-while getopts 'qVhH?' opt
+while getopts 'qVT:hH?' opt
 do	case ${opt} in
 	q)	quiet='-q';;
 	V)	verbose=false;;
+	T)	titleopt=${titleopt}${OPTARG};;
 	*)	Usage 0;;
 	esac
 done
@@ -57,6 +61,11 @@ shift $(( ${OPTIND} -1 ))
 [ ${#} -lt 1 ] && Usage
 
 # Interpret parameters
+
+case ${titleopt} in
+*[!psSfH]*)
+	Fatal "-T ${titleopt} not allowed";;
+esac
 
 base=${1##*/}
 srcdir=${1%/*}
@@ -95,9 +104,11 @@ EarlyReturn() {
 DoRecord() {
 	MyCd "${srcdir}"
 	if [ -n "${time}" ]
-	then	MyExec sleepto ${quiet} "${time}" || EarlyReturn
+	then	MyExec sleepto ${quiet} ${titleopt:+"-T${titleopt}"} "${time}" \
+			|| EarlyReturn
 		${verbose} && MyExec date
-		MyExec video ${quiet} ${len:+-e} ${len} "${@}" "${base}.avi"
+		MyExec video ${quiet} ${len:+-e} ${len} \
+			${titleopt:+"-T${titleopt}"} "${@}" "${base}.avi"
 		rstat=${?}
 	fi
 }

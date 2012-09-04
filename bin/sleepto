@@ -7,7 +7,8 @@ Echo() {
 
 Fatal() {
 	Echo "${0##*/}: ${*}" >&2
-	exit 2
+	trapret=2
+	exit ${trapret}
 }
 
 Usage() {
@@ -17,15 +18,44 @@ Typical examples for TIME are:
 	23:59
 	'23:59:59 31 Dec 2012' (do not forget quoting from the shell)
 options:
+-T[pfsSH] Pass the corresponding option(s) to the title script.
+          H means that the title script is not used.
 -q  quiet
 -h  show this help text"
 	exit ${1:-1}
 }
 
+Title() {
+Title() {
+	:
+}
+	case ${titleopt} in
+	*H*)	return;;
+	esac
+	command -v title >/dev/null 2>&1 || return 0
+TitleVerbose() {
+	:
+}
+	trapret=130
+TitleTrap() {
+	trap : EXIT HUP INT TERM
+	TitleVerbose
+	trap - EXIT HUP INT TERM
+	exit ${trapret}
+}
+	trap TitleTrap EXIT HUP INT TERM
+InitTitle() {
+	. title "${@}"
+}
+	InitTitle ${titleopt:+"-${titleopt}"} -- "${@}"
+}
+
+titleopt=
 quiet=false
 OPTIND=1
-while getopts "qhH?" opt
+while getopts "T:qhH?" opt
 do	case ${opt} in
+	T)	titleopt=${titleopt}${OPTARG};;
 	q)	quiet=:;;
 	*)	Usage 0;;
 	esac
@@ -33,15 +63,32 @@ done
 shift $(( ${OPTIND} - 1 ))
 [ ${#} -gt 0 ] || Usage
 
+case ${titleopt} in
+*[!psSfH]*)
+	Fatal "-T ${titleopt} not allowed";;
+esac
+
 curr=`date '+%s'` && [ -n "${curr:++}" ] || \
 	Fatal 'cannot determine current date'
 diff=`date -d "${*}" '+%s'` && [ -n "${diff:++}" ] || \
 	Fatal 'cannot determine destination date'
 [ "${diff}" -gt "${curr}" ] && diff=$(( ${diff} - ${curr} )) || diff=
+if [ -z "${diff:++}" ]
+then	Echo "not sleeping"
+	exit 0
+fi
 if ! ${quiet}
 then	if text=`date -d "${*}"` && [ -n "${text:++}" ]
-	then	Echo "Sleeping until ${text}"
-	else	Echo "Sleeping ${diff:-0} seconds"
+	then	Echo "sleeping until ${text}"
+		Title "zzz... ${text}"
+	else	Echo "sleeping ${diff} seconds"
+		Title "zzz... ${diff} sec"
 	fi
 fi
-[ -z "${diff:++}" ] || exec sleep "${diff}"
+if [ -n "${trapret}" ]
+then	sleep "${diff}"
+	trapret=${?}
+	TitleTrap
+else	exec sleep "${diff}"
+	Fatal 'failed to exec sleep ${diff}'
+fi

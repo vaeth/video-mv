@@ -205,8 +205,64 @@ Audiostream:
 -B x Bitrate for lame (only useful if lame is used). Sane values: 128, 160
      Current value: ${lamebr}, internally: ${lamebreff} (cf. option -1)
 -Q x Quality for lame (0-9, 0 is best but much processor time), "\
-"currently ${lamequality}"
+"currently ${lamequality}
+-T[pfsSH] Pass the corresponding option(s) to the title script.
+          H means that the title script is not used."
 	exit ${1:-2}
+}
+
+mixertrap=false
+titletrap=false
+ExitTrap() {
+	trap : EXIT HUP INT TERM
+	${mixertrap} && Echoexec -q amixer set Line mute
+	if ${titletrap}
+	then	if [ ${trapret} -eq 0 ]
+		then	Title "${0##*/} success"
+		elif [ ${trapret} -eq 130 ]
+		then	Title "${0##*/} interrupt"
+		else	Title "${0##*/} failure"
+		fi
+	fi
+	trap - EXIT HUP INT TERM
+	exit ${trapret}
+}
+
+Exit() {
+	trapret=${1:-${?}}
+	${have_trap} && ExitTrap
+	exit ${trapret}
+}
+
+have_trap=false
+SetTrap() {
+	${have_trap} && return
+	if ${mixertrap} || ${titletrap}
+	then	have_trap=:
+		trap ExitTrap EXIT HUP INT TERM
+	fi
+}
+
+SetMixerTrap() {
+	mixertrap=:
+	SetTrap
+}
+
+Title() {
+Title() {
+	:
+}
+	case ${titleopt} in
+	*H*)	return;;
+	esac
+	command -v title >/dev/null 2>&1 || return 0
+	trapret=130
+	titletrap=:
+	SetTrap
+InitTitle() {
+	. title "${@}"
+}
+	InitTitle ${titleopt:+"-${titleopt}"} -- "${@}"
 }
 
 SetVars() {
@@ -230,6 +286,7 @@ CalcLamebr() {
 # This must be done in a function, because we must repeat this for option -v.
 
 SetDefaults() {
+	titleopt=
 # General options
 	force=false
 	noexec=false
@@ -259,10 +316,10 @@ SetDefaults() {
 	brspec=false
 	expand=
 	loudnessplay=100
-	optargs='@fpqrRm:4:Ggb:M:F:e:Ec:C:w:W:noUA:01ulaB:Q:vzZ.H!?'
+	optargs='@fpqrRm:4:Ggb:M:F:e:Ec:C:w:W:noUA:01ulaB:Q:vzZ.T:!?'
 # Possibly differing defaults:
 	if ! ${fromfile}
-	then	optargs="${optargs}L23:i:d:k:h:s:S:I:V:D:"
+	then	optargs="${optargs}L23:i:d:k:Hh:s:S:I:V:D:"
 		brightness=0
 		contrast=0
 		hue=0
@@ -386,10 +443,6 @@ do	case ${opt} in
 			sound='c'
 			soundencode=false
 		fi;;
-	H)	if ${fromfile}
-		then	Usage 1
-		else	hqdn=
-		fi;;
 	2)	if ${fromfile}
 		then	keep=:
 		else	vver=
@@ -408,13 +461,14 @@ do	case ${opt} in
 		then	Push -c skipb '-sb' "${OPTARG}"
 		else	loudness=${OPTARG}
 		fi;;
-	T)	loudnessplay=${OPTARG};;
+	T)	titleopt=${titleopt}${OPTARG};;
 # Special options for TV input
 	i)	inputnr=${OPTARG};;
 	I)	inputchannel=${OPTARG};;
 	d)	brightness=${OPTARG};;
 	c)	contrast=${OPTARG};;
 	h)	hue=${OPTARG};;
+	H)	hqdn=;;
 	L)	lb=;;
 	D)	device=${OPTARG};;
 # Special options for File input
@@ -429,6 +483,11 @@ do	case ${opt} in
 	esac
 done
 shift $(( ${OPTIND} - 1 ))
+
+case ${titleopt} in
+*[!psSfH]*)
+	Fatal "-T ${titleopt} not allowed";;
+esac
 
 if ! ${mplayer}
 then	if command -v ffmpeg >/dev/null 2>&1
@@ -459,22 +518,31 @@ BrTest() {
 
 # The following function is used to print and/or execute a command
 
-doexec=
 Echoexec() {
 	quiettmp=
 	if [ "${1}" = "-q" ]
 	then	quiettmp=1
 		shift
 	fi
-	Echo "${*}"
-	if ! ${noexec}
-	then	if [ -n "${quiettmp:++}" ]
-		then	${doexec} "${@}" >/dev/null 2>&1
-			execresult=${?}
-		else	${doexec} "${@}"
-			execresult=${?}
-		fi
+	execprefix=
+	echoexec=false
+	if [ "${1}" = 'exec' ]
+	then	echoexec=:
+		${have_trap} || execprefix=exec
+		shift
 	fi
+	Echo "${*}"
+	if ${noexec}
+	then	execresult=0
+	else	if [ -n "${quiettmp:++}" ]
+		then	${execprefix} "${@}" >/dev/null 2>&1
+		else	${execprefix} "${@}"
+		fi
+		execresult=${?}
+		[ -z "${execprefix:++}" ] || Fatal "failed to execute ${1}"
+	fi
+	${echoexec} && Exit ${execresult}
+	return ${execresult}
 }
 
 # Clean/Test intermediate files (not called for TV input)
@@ -661,14 +729,6 @@ eval "CalcVF ${vfadd}"
 
 # Set the alsa sound (only called for TV input)
 
-trapret=0
-MixerTrap() {
-	trap : EXIT HUP INT TERM
-	Echoexec -q amixer set Line mute
-	trap - EXIT HUP INT TERM
-	exit ${trapret}
-}
-
 Setsound() {
 	# Now we use alsa to set the sound. Of course, everything here depends
 	# on the alsa-version, the kernel-version and the soundcard.
@@ -696,7 +756,7 @@ Setsound() {
 	fi
 
 	# When *watching* video, the sound is stopped at the end or when breaking:
-	${record} || trap MixerTrap EXIT HUP INT TERM
+	${record} || SetMixerTrap
 }
 
 # Pass is the main function calling mencoder/mplayer.
@@ -745,6 +805,7 @@ CalcSoptFFmpeg() {
 	esac
 }
 
+titlepass=
 Pass() {
 	outputtmp=${output}
 	lavcopts=
@@ -834,30 +895,32 @@ Pass() {
 	fi
 	Echoexec date
 	[ "${currvpass}" -eq 3 ] && Echoexec cp -a -- "${morepass}" "${morepassed}"
-	[ "${2}" = '-e' ] && doexec=exec
+	doexec=Echoexec
+	[ "${2}" = 'noexec' ] || doexec='Echoexec exec'
 	if ${record}
-	then	if ${mplayer}
-		then	eval "Echoexec mencoder \${quiet} ${tvopt} -ovc ${vopt} ${vf} \
+	then	Title "${titlepass}${titlepass:+ }${output##*/}"
+		if ${mplayer}
+		then	eval "${doexec} mencoder \${quiet} ${tvopt} -ovc ${vopt} ${vf} \
 			${oftype} ${aspect} \${noodml} ${sopt} \
 			${endpos} ${skips} ${skipb} ${add} \
 			-o \"\${outputtmp}\" ${input} ${addname}"
 		elif ${ffmpeg}
-		then	eval "Echoexec ffmpeg \${quiet} ${tvopt} ${vf} \
+		then	eval "${doexec} ffmpeg \${quiet} ${tvopt} ${vf} \
 			${oftype} ${aspect} \${noodml} ${sopt} \
 			${endpos} ${skips} ${skipb} ${add} ${recopt} \
 			-- \"\${outputtmp}\""
-		else	eval "Echoexec avconv \${quiet} ${tvopt} ${vf} \
+		else	eval "${doexec} avconv \${quiet} ${tvopt} ${vf} \
 			${oftype} ${aspect} \${noodml} ${sopt} \
 			${endpos} ${skips} ${skipb} ${add} ${recopt} \
 			-- \"\${outputtmp}\""
 		fi
 	elif ${mplayer}
-	then	eval "Echoexec mplayer \${quiet} ${tvopt} ${vf} ${aspect} \
+	then	eval "${doexec} mplayer \${quiet} ${tvopt} ${vf} ${aspect} \
 			${skips} ${skipb} ${add} ${input} ${addname}"
 	elif ${ffmpeg}
-	then	eval "Echoexec ffplay \${quiet} ${tvopt} ${vf} ${aspect} \
+	then	eval "${doexec} ffplay \${quiet} ${tvopt} ${vf} ${aspect} \
 			${skips} ${skipb} ${add} ${input}"
-	else	eval "Echoexec avplay \${quiet} ${tvopt} ${vf} ${aspect} \
+	else	eval "${doexec} avplay \${quiet} ${tvopt} ${vf} ${aspect} \
 			${skips} ${skipb} ${add} ${input}"
 	fi
 	retvalue=${execresult}
@@ -885,11 +948,13 @@ If you really meant what you typed, use in addition option -!"
 	while [ "${currpass}" -le "${2}" ]
 	do	if [ "${totalpass}" -gt 0 ]
 		then	if [ "${totalpass}" -eq "${2}" ]
-			then	Verbose "Pass ${currpass}|${totalpass}"
-			else	Verbose "Pass ${currpass}|${2} of ${totalpass}"
+			then	titlepass="${currpass}|${totalpass}"
+				Verbose "Pass ${currpass}|${totalpass}"
+			else	titlepass="${currpass}|${2}/${totalpass}"
+				Verbose "Pass ${currpass}|${2} of ${totalpass}"
 			fi
 		fi
-		Pass "${currpass}" || return ${retvalue}
+		Pass "${currpass}" noexec || return ${retvalue}
 		currpass=$(( ${currpass} + 1 ))
 	done
 	[ "${totalpass}" -gt 0 ] && [ "${2}" -lt "${totalpass}" ] && return 0
@@ -903,21 +968,14 @@ retvalue=0
 if ! ${fromfile}
 then	Clean s && Clean t || return 2
 	Setsound
-	if ! ${record}
-	then	# If we do not record, we must not "exec" mplayer,
-		# because we have to silent the sound afterwards.
-		# (This is done automatically on exit by "trap", but this "trap" would
-		# not be executed after an "exec mplayer").
-		Pass v
-	else	Pass v -e
-	fi
+	Pass v
 elif [ "${passarg}" = 'c' ]
 then	BrTest
 	Clean t
-	Pass c -e
+	Pass c
 elif [ "${passarg}" = '-' ]
 then	BrTest
-	Pass - -e
+	Pass -
 else	Passes "${frompass}" "${topass}"
 fi
-exit ${retvalue}
+Exit ${retvalue}

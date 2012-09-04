@@ -16,6 +16,8 @@ The latter is supposed to be modified to the defaults which you want
 (e.g. matching your hardware).
 
 You also need push.sh from http://github.com/vaeth/push in your path.
+If you want that the hard status line is set, also the title script from
+http://github.com/vaeth/runtitle is required in your path.
 
 To get help run in a shell
 	video -\?  (-h is reserved for "hue")
