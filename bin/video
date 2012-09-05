@@ -206,8 +206,7 @@ Audiostream:
      Current value: ${lamebr}, internally: ${lamebreff} (cf. option -1)
 -Q x Quality for lame (0-9, 0 is best but much processor time), "\
 "currently ${lamequality}
--T[pfsSH] Pass the corresponding option(s) to the title script.
-          H means that the title script is not used."
+-T[pPfHsS-] pass option(s) to the title script; - means no title"
 	exit ${1:-2}
 }
 
@@ -250,19 +249,19 @@ SetMixerTrap() {
 
 Title() {
 Title() {
-	:
+:
 }
 	case ${titleopt} in
-	*H*)	return;;
+	*-*)	return;;
 	esac
 	command -v title >/dev/null 2>&1 || return 0
 	trapret=130
 	titletrap=:
 	SetTrap
-InitTitle() {
-	. title "${@}"
+TitleInit() {
+. title "${@}"
 }
-	InitTitle ${titleopt:+"-${titleopt}"} -- "${@}"
+	TitleInit ${titleopt:+"-${titleopt}"} -- "${@}"
 }
 
 SetVars() {
@@ -485,8 +484,8 @@ done
 shift $(( ${OPTIND} - 1 ))
 
 case ${titleopt} in
-*[!psSfH]*)
-	Fatal "-T ${titleopt} not allowed";;
+*[!pPfHsS-]*)
+	Usage;;
 esac
 
 if ! ${mplayer}

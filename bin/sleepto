@@ -18,8 +18,7 @@ Typical examples for TIME are:
 	23:59
 	'23:59:59 31 Dec 2012' (do not forget quoting from the shell)
 options:
--T[pfsSH] Pass the corresponding option(s) to the title script.
-          H means that the title script is not used.
+-T[pPfHsS-] pass option(s) to the title script; - means no title
 -q  quiet
 -h  show this help text"
 	exit ${1:-1}
@@ -27,14 +26,14 @@ options:
 
 Title() {
 Title() {
-	:
+:
 }
 	case ${titleopt} in
-	*H*)	return;;
+	*-*)	return;;
 	esac
 	command -v title >/dev/null 2>&1 || return 0
 TitleVerbose() {
-	:
+:
 }
 	trapret=130
 TitleTrap() {
@@ -44,16 +43,16 @@ TitleTrap() {
 	exit ${trapret}
 }
 	trap TitleTrap EXIT HUP INT TERM
-InitTitle() {
-	. title "${@}"
+TitleInit() {
+. title "${@}"
 }
-	InitTitle ${titleopt:+"-${titleopt}"} -- "${@}"
+	TitleInit ${titleopt:+"-${titleopt}"} -- "${@}"
 }
 
 titleopt=
 quiet=false
 OPTIND=1
-while getopts "T:qhH?" opt
+while getopts "T:qh?" opt
 do	case ${opt} in
 	T)	titleopt=${titleopt}${OPTARG};;
 	q)	quiet=:;;
@@ -64,8 +63,8 @@ shift $(( ${OPTIND} - 1 ))
 [ ${#} -gt 0 ] || Usage
 
 case ${titleopt} in
-*[!psSfH]*)
-	Fatal "-T ${titleopt} not allowed";;
+*[!pPfHsS-]*)
+	Usage;;
 esac
 
 curr=`date '+%s'` && [ -n "${curr:++}" ] || \

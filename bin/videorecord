@@ -36,8 +36,7 @@ Typical examples are:
 The following options are available:
   -q        Be quiet
   -V        Be not very verbose
-  -T[pfsSH] Pass the corresponding option(s) to the title script.
-            H means that the title script is not used."
+  -T[pPfHsS-] pass option(s) to the title script; - means no title"
 	exit ${1:-1}
 }
 
@@ -49,7 +48,7 @@ titleopt=
 
 # Parse options
 
-while getopts 'qVT:hH?' opt
+while getopts 'qVT:h?' opt
 do	case ${opt} in
 	q)	quiet='-q';;
 	V)	verbose=false;;
@@ -63,8 +62,8 @@ shift $(( ${OPTIND} -1 ))
 # Interpret parameters
 
 case ${titleopt} in
-*[!psSfH]*)
-	Fatal "-T ${titleopt} not allowed";;
+*[!pPfHsS-]*)
+	Usage;;
 esac
 
 base=${1##*/}
