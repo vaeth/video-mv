@@ -552,7 +552,7 @@ Clean() {
 		set -- "${soundmagic}" analyse.log c*':'*trace*.txt
 		set -f
 		if ${force}
-		then	Echoexec rm -- "${@}"
+		then	Echoexec rm -f -- "${@}"
 			return
 		fi
 		for cleani
@@ -561,7 +561,7 @@ Clean() {
 		done
 		return 0;;
 	t)	if ${force}
-		then	Echoexec rm -- "${morepass}" "${morepassed}"
+		then	Echoexec rm -f -- "${morepass}" "${morepassed}"
 			return
 		fi
 		for cleani in "${morepass}" "${morepassed}"
@@ -573,7 +573,7 @@ Clean() {
 	l)	cleani=${keep};;
 	*)	Fatal "internal error: call of function Clean with bad argument ${1}";;
 	esac
-	${cleani} || Echoexec rm -- "${morepass}" "${morepassed}"
+	${cleani} || Echoexec rm -f -- "${morepass}" "${morepassed}"
 }
 
 # Parse pass and infile arguments
