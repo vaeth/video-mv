@@ -14,10 +14,12 @@ To install these scripts simply copy the content of bin into your PATH
 and the content of etc into /etc or also into your PATH.
 The latter is supposed to be modified to the defaults which you want
 (e.g. matching your hardware).
+To obtain support for zsh completion, you can copy the content of zsh/
+into a directory of zsh's $fpath
 
 You also need push.sh from http://github.com/vaeth/push in your path.
 If you want that the hard status line is set, also the title script from
-http://github.com/vaeth/runtitle (version >=2.0) is required in your path.
+http://github.com/vaeth/runtitle (version >=2.3) is required in your path.
 
 To get help run in a shell
 	video -\?  (-h is reserved for "hue")

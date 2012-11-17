@@ -1,0 +1,169 @@
+#compdef video videoencode
+local context state state_descr line
+typeset -A opt_args
+local args
+args=(
+'(1 2 -)-\\?[help]'
+'-@[Use experimentally ffmpeg/libav instead of mplayer/mencoder]'
+'-f[Force overwrite of existing output file]'
+'-p[Print instead of executing]'
+'-\#[Skip most sanity checks for the options]'
+'-q[quiet]'
+'-m+[CONTAINER. Define record container format]:container format:(avi mpeg lavf rawvideo rawaudio)'
+'-4+[CODEC.  Set codec format]:codec format:->codec'
+'-b+[BITRATE. Set bitrate]:bit rate:(600 700 800 900 1000 1200 1400 1600)'
+'-M+[MBD. Set mbd value]:mbd value:->mbd'
+'-r[Use refinement options (slow)]'
+'-R[Remove refinement options (fast)]'
+'-F+[FILTER (Add FILTER to chain)]:video filter:("pp=lb" pullup filmdint)'
+'-e+[TIME (Specify end time/size)]:stop time:->stoptime'
+'-C+[CROP (horizontally)]:width\:xmin:->horizontal'
+'-c+[CROP (vertically)]:height\:ymin:->vertical'
+'-w+[CROP (vertically 400+16x)]:height(400+16x)\:ymin:(0 1 2 3 4 5 6 7)'
+'-W+[CROP (vertically 40ß-16x)]:height(400-16x)\:ymin:(0 1 2 3 4)'
+'-n[chop right boundary\: as -C 704\:24]'
+'-E[expand instead of crop]'
+'-A[WIDTH\[\:HEIGHT\] (change aspect to force WIDTH)]:width\[\:height\] (default is 720\:576 or crop values):->aspect'
+'-0[no sound]'
+'-1[mono sound]'
+'-z[sound\: no alsa]'
+'-Z[sound\: alsa]'
+'-.[with alsa\: output sound as pcm/raw]'
+'-a[lame ABR for sound (better, but incompatible)]'
+'-B+[lame bitrate]:lame bitrate:(64 80 128 160)'
+'-Q+[lame quality]:lame quality:(0)'
+'*-T+[OPT (set title option)]:title option:_title_opt'
+)
+case $service in
+(*enc*)
+args+=(
+'-P+[MAXPASS (0 means implicit 1-pass)]:maximal pass:(0 4)'
+'-O[Output also intermediate pass files]'
+'-t+[PASS (use turbomode up to (including) PASS)]:last turbo pass:(1 2 3)'
+'-k[keep temporary files even after last pass]'
+'-s+[TIME (Specify start/end time(]:start time:->starttime'
+'-S+[BYTES (Cut off first BYTES)]:byte number to cut'
+'-G[Start new chunk each GB (incompatible, needed for files >4GB)]'
+'-g[No odml headers; opposite of -G (default)]'
+'-u[unencoded sound]'
+'-l[lame CBR sound (default)]'
+'-S+[PERCENT (Use PERCENT loudness for sound capturing(]:loudness percentage:(90 100)'
+'1:Passes:(- 1-4)'
+'2:Input file:_files'
+'3:Output file:_files'
+'*:mplayer options:'
+);;
+(*)
+args+=(
+'-D+[DEVICE (video device)]:path to video device:_files'
+'-i+[INPUTNR (input device number)]:input device number:(0 1 2 3 4 5 6 7 8 9)'
+'-I+[CHANNEL (input channel; - for none)]:input channel:(-)'
+'-2[Use v4l instead of v4l2]'
+'-d+[BRIGHTNESS (brightness value)]:brightness value:(0 -15 -25)'
+'-c+[CONTRAST (contrast value)]:contrast value:(0)'
+'-h+[HUE (hue value)]:hue value:(0)'
+'-s+[SATURATION (saturation value)]:saturation value:(0)'
+'-G[Start new chunk each GB (incompatible, needed for files >4GB) (default)]'
+'-g[No odml headers; opposite of -G]'
+'-3+[LANG (channel number 1/2; implies -1)]:language channel:(1 2)'
+'-u[unencoded sound (default)]'
+'-l[lame CBR sound (not default since too slow with -Q 0)]'
+'1:Output file or live display:->livefile'
+'*:mplayer options:'
+);;
+esac
+_arguments -s -S -A '-*' : $args
+local ret=$?
+case $state in
+(codec)
+	local codec
+	codec=(
+	'mpeg4:MPEG-4 (DivX 4/5)'
+	'msmpeg4v2:MS MPEG4v2'
+	'h261:H.261'
+	'h263:H.263'
+	'h263p:H.263+'
+	'flv:Sorenson H.263 used in Flash Video'
+	'mjpeg:Motion JPEG'
+	'msmpeg4:DivX 3'
+	'libxvid:Xvid MPEG-4 Part 2 (ASP)'
+	'libx264:x264 H.264/AVC MPEG-4 Part 10'
+	'libtheora:Theora'
+	'svq1:Apple Sorenson Video 1'
+	'wmv1:Windows Media Video, version 1 (AKA WMV7)'
+	'wmv2:Windows Media Video, version 2 (AKA WMV8)'
+	)
+	_describe -t codec 'video codec' codec
+	ret=$?;;
+(mbd)
+	local mbd
+	mbd=(
+	'0:mplayer default (fast)'
+	'1:shortest'
+	'2:best quality ratio (recommended)'
+	)
+	_describe -t mbd 'mbd value' mbd
+	ret=$?;;
+(stoptime)
+	local stoptime
+	stoptime=(
+	'01\:00\:00:hh\:mm:\:ss'
+	'3600:seconds'
+	'10mb:megabytes'
+	)
+	_describe -t time 'stop time' stoptime
+	ret=$?;;
+(starttime)
+	local starttime
+	starttime=(
+	'01\:00\:00:skip first hh\:mm:\:ss'
+	'3600-7200:start at 3600 seconds, stop at 7200 seconds'
+	)
+	_describe -t time 'start time' starttime
+	ret=$?;;
+(horizontal)
+	local crop
+	crop=(
+	'560:multiple of 16'
+	'576:typical value for TV'
+	'592:multiple of 16'
+	'608:multiple of 16'
+	'688:typical value'
+	'704:typical value'
+	'704\:24:chop right boundary'
+	'762\:4:optical max (incompatible\: not multiple of 16)'
+	'768\:0:maximal value'
+	)
+	_describe -t crop 'width:xmin' crop
+	ret=$?;;
+(vertical)
+	local crop
+	crop=(
+	'400:typical value'
+	'416\:80:typical value'
+	'568\:6:optical max (incompatible\: not mltiple of 16)'
+	'576\:0:maximal value'
+	)
+	_describe -t crop 'height:ymin' crop
+	ret=$?;;
+(aspect)
+	local aspect
+	aspect=(
+	'1024:typical value'
+	'768:typical value'
+	'750:sometimes used'
+	'733:sometimes used'
+	'716:sometimes used'
+	'992:seldom used'
+	'1000:seldom used'
+	'720\:576:default values if crop is not set'
+	)
+	_describe -t aspect 'width[:height] (default is 720:576 or crop values)' aspect
+	ret=$?;;
+(livefile)
+	_alternative \
+	'Output file:Output file:_files' \
+	'live display:live display:(-)'
+	ret=$?;;
+esac
+return ret

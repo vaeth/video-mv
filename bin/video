@@ -149,7 +149,7 @@ Videostream:
      (be aware that sound and picture will stop at slightly different times)"
 	if ${fromfile}
 	then	Echo \
-"-s X or hh:mm:ss   skip first X seconds resp hh:mm:ss. Alterantively:
+"-s X or hh:mm:ss   skip first X seconds resp hh:mm:ss. Alternatively:
 -s X-Y    start at X sec, stop at Y sec. This is the same as -s X -e \$((Y-X))
 -S X cut off first X bytes
 -G   Start new chunk each GB (incompatible, needed for files >4GB)

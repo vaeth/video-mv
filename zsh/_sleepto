@@ -1,0 +1,6 @@
+#compdef sleepto
+_arguments -s -S -A '-*' : \
+'(1 -)'{'-h','-H','-\\?'}'[help]' \
+'*-T+[OPT (set title option)]:title option:_title_opt' \
+'-q[quiet]' \
+'1:time:("23\:59" "23\:59\:00 31 Dec 2012" "23\:59\:01 today" "now")'

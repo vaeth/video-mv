@@ -1,0 +1,25 @@
+#compdef videorecord
+local context state state_descr line
+typeset -A opt_args
+_arguments -s -S -A '-*' : \
+'(1 -)'{'-h','-H','-\\?'}'[help]' \
+'*-T+[OPT (set title option)]:title option:_title_opt' \
+'-q[quiet]' \
+'1:file to save (DIR/basename):_files' \
+'2:start time:("23\:59" "23\:59\:00 31 Dec 2012" "23\:59\:01 today" "now")' \
+'3:length:->len' \
+'*::video options'
+local ret=$?
+case $state in
+(len)
+	local len
+	len=(
+	'23\:59\:00:hh\:mm\:ss'
+	'0:infinite length'
+	'-:infinite length'
+	':infinite length'
+	)
+	_describe -t length 'length' len
+	ret=$?;;
+esac
+return ret
