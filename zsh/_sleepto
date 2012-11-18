@@ -1,5 +1,5 @@
 #compdef sleepto
-_arguments -s -S -A '-*' : \
+_arguments -s -S -A '-?*' : \
 '(1 -)'{'-h','-H','-\\?'}'[help]' \
 '*-T+[OPT (set title option)]:title option:_title_opt' \
 '-q[quiet]' \
