@@ -1,5 +1,5 @@
 #compdef video videoencode
-local context state state_descr line
+local curcontext="$curcontext" state state_descr line
 typeset -A opt_args
 local args
 args=(
@@ -72,7 +72,7 @@ args+=(
 '*:mplayer options:'
 );;
 esac
-_arguments -s -S -A '-?*' : $args
+_arguments -C -s -S -A '-?*' : $args
 local ret=$?
 case $state in
 (codec)
