@@ -489,7 +489,7 @@ case ${titleopt} in
 esac
 
 if ! ${mplayer}
-then	if command -v ffmpeg >/dev/null 2>&1
+then	if ! command -v avplay >/dev/null 2>&1
 	then	ffmpeg=:
 		lb=
 	else	ffmpeg=false
