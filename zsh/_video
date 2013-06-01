@@ -20,7 +20,7 @@ args=(
 '-C+[CROP (horizontally)]:width\:xmin:->horizontal'
 '-c+[CROP (vertically)]:height\:ymin:->vertical'
 '-w+[CROP (vertically 400+16x)]:height(400+16x)\:ymin:(0 1 2 3 4 5 6 7)'
-'-W+[CROP (vertically 40ß-16x)]:height(400-16x)\:ymin:(0 1 2 3 4)'
+'-W+[CROP (vertically 400-16x)]:height(400-16x)\:ymin:(0 1 2 3 4)'
 '-n[chop right boundary\: as -C 704\:24]'
 '-E[expand instead of crop]'
 '-A[WIDTH\[\:HEIGHT\] (change aspect to force WIDTH)]:width\[\:height\] (default is 720\:576 or crop values):->aspect'
@@ -117,6 +117,7 @@ case $state in
 	local starttime
 	starttime=(
 	'01\:00\:00:skip first hh\:mm:\:ss'
+	'01\:00\:00-01\:00\:01:skip 1 hour, stop 1 second later'
 	'3600-7200:start at 3600 seconds, stop at 7200 seconds'
 	)
 	_describe -t time 'start time' starttime

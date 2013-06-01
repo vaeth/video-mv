@@ -315,6 +315,7 @@ SetDefaults() {
 	brspec=false
 	expand=
 	loudnessplay=100
+	lamequality=0
 	optargs='@fpqrRm:4:Ggb:M:F:e:Ec:C:w:W:noUA:01ulaB:Q:vzZ.T:!?'
 # Differing defaults for video/videoencode:
 	if ! ${fromfile}
@@ -337,7 +338,6 @@ SetDefaults() {
 		noodml=
 		sound='c'
 		soundencode=false
-		lamequality=1
 		totalpass=0
 		inputnr=0
 		inputchannel='-'
@@ -353,7 +353,6 @@ SetDefaults() {
 		noodml='-noodml'
 		sound='l'
 		soundencode=:
-		lamequality=0
 		totalpass=${defpass}
 		refinement=${therefinement}
 	fi
@@ -363,18 +362,48 @@ SetDefaults() {
 	fi
 	CalcLamebr
 }
-SetDefaults
 
 # Parse the option arguments
+
+CalcSeconds() {
+	cs_sec=${2:-0}
+	case ${2} in
+	*:*)
+		cs_cur=${2}':'
+		cs_arg=${cs_cur%%:*}
+		cs_sec=$(( ${cs_arg:-0} * 3600 ))
+		cs_cur=${cs_cur#*:}
+		cs_arg=${cs_cur%%:*}
+		cs_sec=$(( ${cs_arg:-0} * 60 + ${cs_sec} ))
+		cs_cur=${cs_cur#*:}
+		cs_arg=${cs_cur%%:*}
+		cs_sec=$(( ${cs_arg:-0} + ${cs_sec} ));;
+	esac
+	eval ${1}=\${cs_sec}
+}
+
+SetStartpos() {
+	Push -c skips '-ss' "${1}"
+}
+
+SetEndpos() {
+	if ${mplayer}
+	then	Push -c endpos '-endpos' "${1}"
+	else	Push -c endpos '-to' "${1}"
+	fi
+}
 
 SetStartEnd() {
 	startarg=${1%%-*}
 	endarg=${1##*-}
 	[ "${startarg}" = "${1}" ] && return
-	Push -c skips '-ss' "${startarg}"
-	Push -c endpos '-endpos' "$(( ${endarg} - ${startarg} ))"
+	SetStartpos "${startarg}"
+	CalcSeconds startarg "${startarg}"
+	CalcSeconds endarg "${endarg}"
+	SetEndpos "$(( ${endarg} - ${startarg} ))"
 }
 
+SetDefaults
 OPTIND=1
 while getopts "${optargs}" opt
 do	case ${opt} in
@@ -392,7 +421,7 @@ do	case ${opt} in
 	b)	brspec=:; br=${OPTARG};;
 	M)	mbd=${OPTARG};;
 	F)	Push vfadd "${OPTARG}";;
-	e)	Push -c endpos '-endpos' "${OPTARG}";;
+	e)	SetEndpos "${OPTARG}";;
 	E)	expand=1;;
 	c)	cropcmd=:
 		SetVars croph cropy "${OPTARG}";;
@@ -452,7 +481,7 @@ do	case ${opt} in
 		fi
 		SetDefaults;;
 	s)	if ${fromfile}
-		then	Push -c skips '-ss' "${OPTARG}"
+		then	SetStartpos "${OPTARG}"
 			SetStartEnd "${OPTARG}"
 		else	saturation=${OPTARG}
 		fi;;
@@ -785,7 +814,7 @@ CalcSopt() {
 	tvaudio="${tvaudio}audiorate=44100:forcechan=${forcechan}:amode=${amode}"
 	case ${1} in
 	l)	Push sopt '-oac' 'mp3lame' '-lameopts' \
-			"${lametype}:br=${lamebreff}:aq=0:q=0:mode=${lamemode}";;
+			"${lametype}:br=${lamebreff}:aq=${lamequality}:q=0:mode=${lamemode}";;
 	c)	Push sopt '-oac' 'copy';;
 	p)	Push sopt '-oac' 'pcm';;
 	esac
@@ -802,7 +831,8 @@ CalcSoptFFmpeg() {
 	Push sopt '-ar' '44100'
 	Push sopt '-ac' "${forcechan}"
 	case ${1} in
-	l)	Push sopt '-c:a' 'libmp3lame' '-q:a' '0' '-b:a' "${lamebreff}k";;
+	l)	Push sopt '-c:a' 'libmp3lame' '-q:a' "${lamequality}" \
+			'-b:a' "${lamebreff}k";;
 	p)	Push sopt '-c:a' 'pcm_u8';;
 	c)	Push sopt '-c:a' 'pcm_u8';;
 	esac
