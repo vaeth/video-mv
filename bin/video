@@ -97,7 +97,6 @@ The following options are available:
 
 Various:
 -@   Use experimentally ffmpeg/libav instead of mplayer/mencoder.
-     This also resets all other options to a (sometimes different) default.
      Currently, not all other options/modes are supported with this option.
 -f   Force overwrite of existing output file
 -p   Print mencoder call instead of executing (so you can edit)
@@ -120,7 +119,6 @@ Videostream:
 -m C Record using container format C, current value ${oftype}. Some choices:
      mkv avi mpeg lavf rawvideo rawaudio
      If empty (default for mencoder) use filename extension.
-     For ffmpeg/libav default is mkv
 -4 C Record using codec C. Current value ${codec}. Some choices:
      mpeg4 (Divx4/5), msmpeg4v2, h261, h263, h263p, mjpeg, msmpeg4 (Divx3),...
 -b x Bitrate, currently ${br}"
@@ -145,7 +143,7 @@ Videostream:
 -r Use refinement options (higher quality, slowdown): ${therefinement}
 -R Remove current refinement options (currently: \"${refinement}\")
 -F XXX Add XXX to the videofilter chain "\
-"(e.g. \"pp=lb\", \"pullup\" or \"filmdint\")
+"(e.g. \"yadif\", \"pp=lb\", \"pullup\" or \"filmdint\")
    If you use this, softskip is automatically added.
 -e hh:mm:ss or Y or Xmb   stop after recording hh:mm:ss/X seconds/Y megabyte
      (be aware that sound and picture will stop at slightly different times)"
@@ -294,6 +292,7 @@ SetDefaults() {
 	quiet=
 	alwaysout=false
 	sanity=:
+	oftype=
 # Sound-related options
 	alsa=false
 	amode=1
@@ -317,11 +316,6 @@ SetDefaults() {
 	expand=
 	loudnessplay=100
 	optargs='@fpqrRm:4:Ggb:M:F:e:Ec:C:w:W:noUA:01ulaB:Q:vzZ.T:!?'
-# Differing defaults for mplayer/ffmpeg-libav:
-	if ${mplayer}
-	then	oftype=
-	else	oftype='mkv'
-	fi
 # Differing defaults for video/videoencode:
 	if ! ${fromfile}
 	then	optargs="${optargs}L23:i:d:k:Hh:s:S:I:V:D:"
@@ -333,7 +327,8 @@ SetDefaults() {
 		loudness=100
 		#codec='mpeg4'
 		#oftype='mpeg'
-		lb='pp=lb'
+		lb='yadif'
+		#lb='pp=lb'
 		#lb='pullup'
 		hqdn='hqdn3d'
 		cropcmd=:
@@ -383,8 +378,7 @@ SetStartEnd() {
 OPTIND=1
 while getopts "${optargs}" opt
 do	case ${opt} in
-	'@')	mplayer=false
-		SetDefaults;;
+	'@')	mplayer=false;;
 	f)	force=:;;
 	k)	keep=:;;
 	p)	noexec=:;;
@@ -497,10 +491,12 @@ esac
 if ! ${mplayer}
 then	if ! command -v avplay >/dev/null 2>&1
 	then	ffmpeg=:
-		lb=
+		libav=false
 	else	ffmpeg=false
+		libav=:
 	fi
 else	ffmpeg=false
+	libav=false
 fi
 
 # Some sanity tests for frequent typing mistakes in usage
@@ -550,7 +546,7 @@ Echoexec() {
 	return ${execresult}
 }
 
-# Clean/Test intermediate files (not called for TV input)
+# Clean/Test intermediate files
 
 Clean() {
 	case ${1} in
@@ -558,7 +554,7 @@ Clean() {
 		set -- "${soundmagic}" analyse.log c*':'*trace*.txt
 		set -f
 		if ${force}
-		then	Echoexec rm -f -- "${@}"
+		then	Echoexec rm -f -- "${output}"
 			return
 		fi
 		for cleani
@@ -716,7 +712,9 @@ fi
 if [ -n "${hqdn:++}" ] || [ -n "${lb:++}" ] || [ -n "${vfadd:++}" ] && ! ${ffmpeg}
 then	Push vfadd 'softskip'
 fi
-${record} && Push vfadd 'harddup'
+if ${record}
+then ${ffmpeg} && ! ${libav} || Push vfadd 'harddup'
+fi
 eval "Push -c vfadd \${cropcmd} \${hqdn} \${lb} ${vfadd}"
 
 CalcVF() {
@@ -804,9 +802,7 @@ CalcSoptFFmpeg() {
 	Push sopt '-ar' '44100'
 	Push sopt '-ac' "${forcechan}"
 	case ${1} in
-	l)	Push sopt '-c:a' 'libmp3lame' '-aq' '0' \
-			'-maxrate:a' "${lamebr}k" \
-			'-minrate:a' "${lamebr}k";;
+	l)	Push sopt '-c:a' 'libmp3lame' '-q:a' '0' '-b:a' "${lamebreff}k";;
 	p)	Push sopt '-c:a' 'pcm_u8';;
 	c)	Push sopt '-c:a' 'pcm_u8';;
 	esac
@@ -919,11 +915,11 @@ Pass() {
 			-o \"\${outputtmp}\" ${input} ${addname}"
 		elif ${ffmpeg}
 		then	eval "${doexec} ffmpeg \${quiet} ${ofarg} \
-			${tvopt} ${vf} ${aspect} ${sopt} \
+			${tvopt} ${aspect} ${sopt} ${vf} \
 			${endpos} ${skips} ${skipb} ${add} ${recopt} \
 			-- \"\${outputtmp}\"" # \${noodml} has no substitute
 		else	eval "${doexec} avconv \${quiet} ${ofarg} \
-			${tvopt} ${vf} ${aspect} ${sopt} \
+			${tvopt} ${aspect} ${sopt} ${vf} \
 			${endpos} ${skips} ${skipb} ${add} ${recopt} \
 			-- \"\${outputtmp}\"" # \${noodml} has no substitute
 		fi
