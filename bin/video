@@ -117,8 +117,10 @@ Various:
      This should be the first option, because it resets all other options.
 
 Videostream:
--m C Record using container format C. Some choices:
-     avi mpeg lavf rawvideo rawaudio
+-m C Record using container format C, current value ${oftype}. Some choices:
+     mkv avi mpeg lavf rawvideo rawaudio
+     If empty (default for mencoder) use filename extension.
+     For ffmpeg/libav default is mkv
 -4 C Record using codec C. Current value ${codec}. Some choices:
      mpeg4 (Divx4/5), msmpeg4v2, h261, h263, h263p, mjpeg, msmpeg4 (Divx3),...
 -b x Bitrate, currently ${br}"
@@ -303,7 +305,6 @@ SetDefaults() {
 	turbolastpass=0
 # Video-related and various other options
 	codec='mpeg4'
-	Push -c oftype
 	vver=2
 	keep=false
 	Push -c endpos
@@ -316,7 +317,12 @@ SetDefaults() {
 	expand=
 	loudnessplay=100
 	optargs='@fpqrRm:4:Ggb:M:F:e:Ec:C:w:W:noUA:01ulaB:Q:vzZ.T:!?'
-# Possibly differing defaults:
+# Differing defaults for mplayer/ffmpeg-libav:
+	if ${mplayer}
+	then	oftype=
+	else	oftype='mkv'
+	fi
+# Differing defaults for video/videoencode:
 	if ! ${fromfile}
 	then	optargs="${optargs}L23:i:d:k:Hh:s:S:I:V:D:"
 		brightness=0
@@ -326,7 +332,7 @@ SetDefaults() {
 		br=4000
 		loudness=100
 		#codec='mpeg4'
-		#Push -c oftype '-of' 'mpeg'
+		#oftype='mpeg'
 		lb='pp=lb'
 		#lb='pullup'
 		hqdn='hqdn3d'
@@ -385,7 +391,7 @@ do	case ${opt} in
 	q)	quiet='-quiet';;
 	r)	refinement=${therefinement};;
 	R)	refinement=;;
-	m)	Push -c oftype '-of' "${OPTARG}";;
+	m)	oftype=${OPTARG};;
 	4)	codec=${OPTARG};;
 	G)	noodml=;;
 	g)	noodml='-noodml';;
@@ -798,7 +804,9 @@ CalcSoptFFmpeg() {
 	Push sopt '-ar' '44100'
 	Push sopt '-ac' "${forcechan}"
 	case ${1} in
-	l)	Push sopt '-c:a' 'libmp3lame' '-aq 0' "${lamebreff}k" '-mode' "{lamemode}";;
+	l)	Push sopt '-c:a' 'libmp3lame' '-aq' '0' \
+			'-maxrate:a' "${lamebr}k" \
+			'-minrate:a' "${lamebr}k";;
 	p)	Push sopt '-c:a' 'pcm_u8';;
 	c)	Push sopt '-c:a' 'pcm_u8';;
 	esac
@@ -896,22 +904,28 @@ Pass() {
 	[ "${currvpass}" -eq 3 ] && Echoexec cp -a -- "${morepass}" "${morepassed}"
 	doexec=Echoexec
 	[ "${2}" = 'noexec' ] || doexec='Echoexec exec'
+	Push -c ofarg
+	[ -z "${oftype}" ] || if ${mplayer}
+	then	Push -c ofarg '-of' "${oftype}"
+	else	Push -c ofarg '-f' "${oftype}"
+	fi
 	if ${record}
 	then	Title "${titlepass}${titlepass:+ }${output##*/}"
 		if ${mplayer}
-		then	eval "${doexec} mencoder \${quiet} ${tvopt} -ovc ${vopt} ${vf} \
-			${oftype} ${aspect} \${noodml} ${sopt} \
+		then	eval "${doexec} mencoder \${quiet} ${ofarg} \
+			\${noodml} \
+			${tvopt} -ovc ${vopt} ${vf} ${aspect} ${sopt} \
 			${endpos} ${skips} ${skipb} ${add} \
 			-o \"\${outputtmp}\" ${input} ${addname}"
 		elif ${ffmpeg}
-		then	eval "${doexec} ffmpeg \${quiet} ${tvopt} ${vf} \
-			${oftype} ${aspect} \${noodml} ${sopt} \
+		then	eval "${doexec} ffmpeg \${quiet} ${ofarg} \
+			${tvopt} ${vf} ${aspect} ${sopt} \
 			${endpos} ${skips} ${skipb} ${add} ${recopt} \
-			-- \"\${outputtmp}\""
-		else	eval "${doexec} avconv \${quiet} ${tvopt} ${vf} \
-			${oftype} ${aspect} \${noodml} ${sopt} \
+			-- \"\${outputtmp}\"" # \${noodml} has no substitute
+		else	eval "${doexec} avconv \${quiet} ${ofarg} \
+			${tvopt} ${vf} ${aspect} ${sopt} \
 			${endpos} ${skips} ${skipb} ${add} ${recopt} \
-			-- \"\${outputtmp}\""
+			-- \"\${outputtmp}\"" # \${noodml} has no substitute
 		fi
 	elif ${mplayer}
 	then	eval "${doexec} mplayer \${quiet} ${tvopt} ${vf} ${aspect} \
