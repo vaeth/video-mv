@@ -306,8 +306,8 @@ SetDefaults() {
 	codec='mpeg4'
 	vver=2
 	keep=false
-	Push -c endpos
-	Push -c skips
+	endpos=
+	skips=
 	Push -c skipb
 	mbd=2
 	Push -c vfadd
@@ -382,25 +382,14 @@ CalcSeconds() {
 	eval ${1}=\${cs_sec}
 }
 
-SetStartpos() {
-	Push -c skips '-ss' "${1}"
-}
-
-SetEndpos() {
-	if ${mplayer}
-	then	Push -c endpos '-endpos' "${1}"
-	else	Push -c endpos '-to' "${1}"
-	fi
-}
-
 SetStartEnd() {
 	startarg=${1%%-*}
-	endarg=${1##*-}
+	endpos=${1##*-}
 	[ "${startarg}" = "${1}" ] && return
-	SetStartpos "${startarg}"
+	skips=${startarg}
 	CalcSeconds startarg "${startarg}"
-	CalcSeconds endarg "${endarg}"
-	SetEndpos "$(( ${endarg} - ${startarg} ))"
+	CalcSeconds endpos "${endpos}"
+	endpos=$(( ${endpos} - ${startarg} ))
 }
 
 SetDefaults
@@ -421,7 +410,7 @@ do	case ${opt} in
 	b)	brspec=:; br=${OPTARG};;
 	M)	mbd=${OPTARG};;
 	F)	Push vfadd "${OPTARG}";;
-	e)	SetEndpos "${OPTARG}";;
+	e)	endpos=${OPTARG};;
 	E)	expand=1;;
 	c)	cropcmd=:
 		SetVars croph cropy "${OPTARG}";;
@@ -481,7 +470,7 @@ do	case ${opt} in
 		fi
 		SetDefaults;;
 	s)	if ${fromfile}
-		then	SetStartpos "${OPTARG}"
+		then	skips=${OPTARG}
 			SetStartEnd "${OPTARG}"
 		else	saturation=${OPTARG}
 		fi;;
@@ -700,6 +689,19 @@ do	if ${collectopt}
 	else	Push addname "${collecti}"
 	fi
 done
+
+if [ -n "${skips}" ]
+then	Push -c skips '-ss' "${skips}"
+else	Push -c skips
+fi
+
+if [ -n "${endpos}" ]
+then	if ${mplayer}
+	then	Push -c endpos '-endpos' "${endpos}"
+	else	Push -c endpos '-to' "${endpos}"
+	fi
+else	Push -c endpos
+fi
 
 # If aspect correction is required, we build the corresponding command:
 
