@@ -1,18 +1,7 @@
 #! /usr/bin/env sh
 # (C) Martin V\"ath <martin@mvath.de>
 
-Echo() {
-	printf '%s\n' "${*}"
-}
-
-Message() {
-	Echo "${0##*/}: ${*}" >&2
-}
-
-Fatal() {
-	Message "${*}"
-	exit 2
-}
+. _videoscript.sh
 
 Usage() {
 	Echo "Usage: ${0##*/} [options] [DIR/]basename TIME LEN [video options]
@@ -83,11 +72,6 @@ case ${len} in
 *)	[ ${#} -ge 1 ] && shift;;
 esac
 
-MyExec() {
-	${verbose} && Echo "${*}"
-	"${@}"
-}
-
 MyCd() {
 	${verbose} && Echo "cd ${1}"
 	cd "${1}" >/dev/null 2>&1 || Fatal "cannot cd to ${1}"
@@ -115,4 +99,4 @@ DoRecord() {
 ${verbose} && MyExec date
 DoRecord "${@}"
 ${verbose} && MyExec date
-return ${rstat}
+Exit ${rstat}

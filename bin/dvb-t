@@ -1,0 +1,133 @@
+#! /usr/bin/env sh
+# (C) Martin V\"ath <martin@mvath.de>
+
+. _videoscript.sh
+
+CalcChannels() {
+	calcchannels=${channels:-${HOME}/.tzap/channels.conf}
+	test -r "${calcchannels}" || {
+		channels='/etc/channels.conf'
+		test -r "${channels}" && calcchannels=${channels}
+	}
+}
+
+Usage() {
+	CalcChannels || calcchannels="nonreadable ${calcchannels}"
+	printf '%s\n' "Usage: ${0##*/} [options] channel [FILE]
+If no FILE is given, a random name is chosen; use - to select standard output.
+Options:
+-f      If FILE exists override it
+-r      Set up /dev/dvb/adapterX/dvr0 for TS recording (FILE is ignored)
+-p      add pat and pmt to TS recording (implies -r)
+-t STOP Stop after given timeout.  STOP is [[hh:]mm:]ss
+-e STOP as -t STOP
+-s TIME Start at TIME
+-c FILE Use FILE (currently: ${calcchannels}).
+        Fallbacks are ~./tzap/channels.conf or /etc/channels.conf
+-a NUM  Use adaptor NUM
+-F NUM  Use frontend NUM
+-d NUM  Use demux NUM
+-q      Quiet
+-T[pPfHsS-] pass option(s) to the title script; - means no title"
+	exit ${1:-1}
+}
+
+Check() {
+	${force} || [ -z "${file:++}" ] && return
+	if [ "${file}" = '-' ] || test -r "${file}"
+	then	Fatal "${2} exists.  Use -f to override"
+	fi
+}
+
+# Default options
+
+SetDefaults() {
+	pass=
+	force=false
+	stop=
+	start=
+	titleopt=
+	channels=
+	adapter=
+	frontend=
+	demux=
+	verbose=:
+	dvb=:
+	SourceDefaults
+}
+
+# Parse options
+
+SetDefaults
+while getopts 'qrpfc:a:F:d:e:t:s:T:h?' opt
+do	case ${opt} in
+	q)	verbose=false;;
+	r)	pass=r;;
+	p)	pass=p;;
+	f)	force=:;;
+	c)	channels=${OPTARG};;
+	F)	frontend=${OPTARG};;
+	a)	adapter=${OPTARG};;
+	d)	demux=${OPTARG};;
+	[te])	stop=${OPTARG};;
+	s)	start=${OPTARG};;
+	T)	titleopt=${titleopt}${OPTARG};;
+	*)	Usage 0;;
+	esac
+done
+shift $(( ${OPTIND} -1 ))
+[ ${#} -ge 1 ] && [ ${#} -le 2 ] || Usage
+
+# Interpret parameters
+
+TitleOpt
+
+case ${stop} in
+*[!:0-9]*)
+	Usage;;
+esac
+
+CalcChannels || Fatal "cannot read channels file ${calcchannels}"
+
+random=false
+file=
+if [ -z "${pass}" ]
+then	pass=o
+	if [ ${#} -lt 2 ] || [ -z "${2}" ]
+	then	random=:
+	else	file=${2}
+		Check
+	fi
+fi
+
+if [ -n "${file}" ]
+then	text=${file}
+else	text="/dev/dvb/adapter${adapter:-0}/dvr0"
+fi
+
+if [ -n "${stop:++}" ]
+then	CalcSeconds stop "${stop}"
+fi
+
+if [ -n "${start:++}" ]
+then	sleepto ${titleopt:+"-T${titleopt}"} "${start}" || Exit
+fi
+
+if ${random}
+then	file=`mktemp /tmp/${0##*/}.${$}XXXXXXXX` && test -r "${file}" || \
+		Fatal "mktemp failed"
+else	Check
+fi
+
+Echo "
+dvb-t: ${1} -> ${text}
+"
+Title "${1}->${text}"
+
+MyExec tzap ${stop:+-t ${stop}} -${pass} ${file:+"${file}"} \
+	${channels:+-c "${channels}"} \
+	${adapter:+-a "${adapter}"} \
+	${frontend:+-f "${frontend}"} \
+	${demux:+-d "${demux}"} \
+	-- "${1}"
+Exit

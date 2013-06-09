@@ -1,6 +1,31 @@
-#! /usr/bin/env sh
-# This file is sourced by video/videoencode to set some defaults.
-# To understand it, look at the function SetDefaults in video/videoencode
+l! /usr/bin/env sh
+# This file is sourced by video/videoencode/dvb-t to set some defaults.
+
+# The first part is to set some defaults common for dvb-t and video{,encode}.
+# Look at the function SetDefaults in the scripts to see what can be set here.
+
+# titleopt=
+
+# Now only dvb-t:
+
+if ${dvb}
+then	# channels=~/.tzap/channels.conf
+	# channels=/etc/channels.conf
+	# pass=r
+	# adapter=1
+	# frontend=1
+	# demux=1
+	# force=:
+	# verbose=false
+	return
+fi
+
+# Now everything common to video and videoencode
+
+#
+
+# Now only video
+
 if ! ${fromfile}
 then	test -r /dev/videotv && device='/dev/videotv'
 	#alsa=:
@@ -11,4 +36,7 @@ then	test -r /dev/videotv && device='/dev/videotv'
 	#hqdn=''
 	#loudness=55
 	#loudnessplay=100
+	return
 fi
+
+# Now only videoencode

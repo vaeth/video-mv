@@ -1,15 +1,7 @@
 #! /usr/bin/env sh
 # (C) Martin V\"ath <martin@mvath.de>
 
-Echo() {
-	printf '%s\n' "${*}"
-}
-
-Fatal() {
-	Echo "${0##*/}: ${*}" >&2
-	trapret=2
-	exit ${trapret}
-}
+. _videoscript.sh
 
 Usage() {
 	Echo "Usage: ${0##*/} [options] TIME
@@ -22,31 +14,6 @@ options:
 -q  quiet
 -h  show this help text"
 	exit ${1:-1}
-}
-
-Title() {
-Title() {
-:
-}
-	case ${titleopt} in
-	*-*)	return;;
-	esac
-	command -v title >/dev/null 2>&1 || return 0
-TitleVerbose() {
-:
-}
-	trapret=130
-TitleTrap() {
-	trap : EXIT HUP INT TERM
-	TitleVerbose
-	trap - EXIT HUP INT TERM
-	exit ${trapret}
-}
-	trap TitleTrap EXIT HUP INT TERM
-TitleInit() {
-. title "${@}"
-}
-	TitleInit ${titleopt:+"-${titleopt}"} -- "${@}"
 }
 
 titleopt=
@@ -62,10 +29,7 @@ done
 shift $(( ${OPTIND} - 1 ))
 [ ${#} -gt 0 ] || Usage
 
-case ${titleopt} in
-*[!pPfHsS-]*)
-	Usage;;
-esac
+TitleOpt
 
 curr=`date '+%s'` && [ -n "${curr:++}" ] || \
 	Fatal 'cannot determine current date'
@@ -73,8 +37,8 @@ diff=`date -d "${*}" '+%s'` && [ -n "${diff:++}" ] || \
 	Fatal 'cannot determine destination date'
 [ "${diff}" -gt "${curr}" ] && diff=$(( ${diff} - ${curr} )) || diff=
 if [ -z "${diff:++}" ]
-then	Echo "not sleeping"
-	exit 0
+then	Echo 'not sleeping'
+	Exit 0
 fi
 if ! ${quiet}
 then	if text=`date -d "${*}"` && [ -n "${text:++}" ]
@@ -86,8 +50,7 @@ then	if text=`date -d "${*}"` && [ -n "${text:++}" ]
 fi
 if [ -n "${trapret}" ]
 then	sleep "${diff}"
-	trapret=${?}
-	TitleTrap
+	Exit
 else	exec sleep "${diff}"
 	Fatal 'failed to exec sleep ${diff}'
 fi

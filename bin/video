@@ -1,7 +1,8 @@
 #! /usr/bin/env sh
 # (C) Martin V\"ath <martin@mvath.de>
 
-set -f
+. _videoscript.sh
+. push.sh
 
 name=${0##*/}
 soundmagic='frameno.avi'
@@ -23,30 +24,6 @@ case ${name} in
 *)
 	mplayer=:;;
 esac
-
-Echo() {
-	printf '%s\n' "${*}"
-}
-
-Verbose() {
-	Echo "# ${*}"
-}
-
-Message() {
-	Echo "${name}: ${*}" >&2
-}
-
-Warning() {
-	Message "warning: ${*}"
-}
-
-Fatal() {
-	Message "${*}"
-	trapret=2
-	exit 2
-}
-
-. push.sh
 
 Usage() {
 	if ! ${fromfile}
@@ -356,31 +333,12 @@ SetDefaults() {
 		totalpass=${defpass}
 		refinement=${therefinement}
 	fi
-	if test -r /etc/videodefaults
-	then	. /etc/videodefaults
-	else	. videodefaults
-	fi
+	dvb=false
+	SourceDefaults
 	CalcLamebr
 }
 
 # Parse the option arguments
-
-CalcSeconds() {
-	cs_sec=${2:-0}
-	case ${2} in
-	*:*)
-		cs_cur=${2}':'
-		cs_arg=${cs_cur%%:*}
-		cs_sec=$(( ${cs_arg:-0} * 3600 ))
-		cs_cur=${cs_cur#*:}
-		cs_arg=${cs_cur%%:*}
-		cs_sec=$(( ${cs_arg:-0} * 60 + ${cs_sec} ))
-		cs_cur=${cs_cur#*:}
-		cs_arg=${cs_cur%%:*}
-		cs_sec=$(( ${cs_arg:-0} + ${cs_sec} ));;
-	esac
-	eval ${1}=\${cs_sec}
-}
 
 SetStartEnd() {
 	startarg=${1%%-*}
@@ -501,10 +459,7 @@ do	case ${opt} in
 done
 shift $(( ${OPTIND} - 1 ))
 
-case ${titleopt} in
-*[!pPfHsS-]*)
-	Usage;;
-esac
+TitleOpt
 
 if ! ${mplayer}
 then	if ! command -v avplay >/dev/null 2>&1
