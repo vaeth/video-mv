@@ -100,11 +100,6 @@ then	pass=o
 	fi
 fi
 
-if [ -n "${file}" ]
-then	text=${file}
-else	text="/dev/dvb/adapter${adapter:-0}/dvr0"
-fi
-
 if [ -n "${stop:++}" ]
 then	CalcSeconds stop "${stop}"
 fi
@@ -119,8 +114,13 @@ then	file=`mktemp /tmp/${0##*/}.${$}XXXXXXXX` && test -r "${file}" || \
 else	Check
 fi
 
+if [ -n "${file}" ]
+then	text=${file}
+else	text="/dev/dvb/adapter${adapter:-0}/dvr0"
+fi
+
 Echo "
-dvb-t: ${1} -> ${text}
+${0##*/}: ${1} -> ${text}
 "
 Title "${1}->${text}"
 
