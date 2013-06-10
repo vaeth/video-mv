@@ -3,12 +3,12 @@ This project is under the BSD license.
 
 Frontends for using mplayer/mencoder, ffmpeg/libav, or tzap as video recorder
 
-The POSIX script video/videoencode is a wrapper for mplayer/mencoder
-or ffmpeg/libav to record from TV (typically with high redundancy) or
+The POSIX scripts video{,encode}.{mplayer,ffmpeg} are wrappers for
+mplayer/mencoder ffmpeg/libav to record from TV or
 to improve the encoding (in possibly several passes), respectively.
 
-In addition there are the scripts sleepto and videorecord which can help you
-to start the video script at an appropriate time.
+In addition there are the scripts sleepto and videorecord.{mplayer,ffmpeg}
+which can help you to start video.{mplayer,ffmpeg} at an appropriate time.
 
 Finally, there is a dvb-t script which allows you to start tzap
 at an appropriate time with appropriate options.
@@ -28,9 +28,9 @@ If you want that the hard status line is set, also the title script from
 http://github.com/vaeth/runtitle (version >=2.3) is required in your path.
 
 To get help run in a shell
-	video -\?  (-h is reserved for "hue")
-	videoencode -h
-	videorecord -h
+	video.mplayer -\?  (-h is reserved for "hue")
+	videoencode.mplayer -h
+	videorecord.mplayer -h
 	sleepto -h
 
 For Gentoo, there is an ebuild in the mv overlay (available by layman).

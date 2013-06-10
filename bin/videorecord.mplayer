@@ -3,8 +3,16 @@
 
 . _videoscript.sh
 
+case ${name} in
+*ff*|*av*)
+	modus='ffmpeg';;
+*)
+	modus='mplayer';;
+esac
+
 Usage() {
-	Echo "Usage: ${0##*/} [options] [DIR/]basename TIME LEN [video options]
+	Echo \
+"Usage: ${0##*/} [options] [DIR/]basename TIME LEN [video.${modus} options]
 Records video DIR/basename.avi at the given time and duration.
 
 TIME must be understood by the 'date' utility. Examples:
@@ -25,6 +33,8 @@ Typical examples are:
 The following options are available:
   -q        Be quiet
   -V        Be not very verbose
+  -p -n -s  Output only command(s) but do not execute something
+  -x PROG   Use PROG instead of video.${modus}
   -T[pPfHsS-] pass option(s) to the title script; - means no title"
 	exit ${1:-1}
 }
@@ -34,12 +44,16 @@ The following options are available:
 verbose=:
 quiet=
 titleopt=
+showonly=false
+prog="video.${modus}"
 
 # Parse options
 
-while getopts 'qVT:h?' opt
+while getopts 'pnsqVx:T:h?' opt
 do	case ${opt} in
+	[pns])	showonly=:;;
 	q)	quiet='-q';;
+	x)	prog=${OPTARG};;
 	V)	verbose=false;;
 	T)	titleopt=${titleopt}${OPTARG};;
 	*)	Usage 0;;
@@ -78,7 +92,7 @@ MyCd() {
 }
 
 EarlyReturn() {
-	Message "stopping due to signal or error"
+	Message 'stopping due to signal or error'
 	exit 1
 }
 
@@ -90,7 +104,7 @@ DoRecord() {
 	then	MyExec sleepto ${quiet} ${titleopt:+"-T${titleopt}"} "${time}" \
 			|| EarlyReturn
 		${verbose} && MyExec date
-		MyExec video ${quiet} ${len:+-e} ${len} \
+		MyExec "${prog}" ${quiet} ${len:+-e} ${len} \
 			${titleopt:+"-T${titleopt}"} "${@}" "${base}.avi"
 		rstat=${?}
 	fi

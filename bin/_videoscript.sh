@@ -1,6 +1,6 @@
 #!/bin/sh
 # (C) Martin V\"ath <martin@mvath.de>
-# Helper code for dvb-t, sleepto, video, videoencode, and videorecord
+# Helper code for dvb-t, sleepto, video{,encode,record}.{mplayer,ffmpeg}
 # This script is sourced; the first line is only for editors
 
 set -f
@@ -31,8 +31,17 @@ Fatal() {
 	Exit 1
 }
 
+Push() {
+	. push.sh
+	Push "${@}"
+}
+
 MyExec() {
-	${verbose} && Echo "${*}"
+	if ${verbose} || ${showonly}
+	then	Push -c myexec "${@}"
+		Echo "${v}"
+		! ${showonly} || return 0
+	fi
 	"${@}"
 }
 

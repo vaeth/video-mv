@@ -1,8 +1,10 @@
-#compdef videorecord
+#compdef videorecord videorecord.mplayer videorecord.ffmpeg
 local curcontext="$curcontext" state state_descr line
 typeset -A opt_args
 _arguments -C -s -S -A '-?*' : \
 '(1 -)'{'-h','-H','-\\?'}'[help]' \
+{'(-s -n)-p','(-n -p)-s','(-s -p)-n'}'[dry run: execute nothing]' \
+"-x+[PROG (Use program instead of $service)]:program:(videorecord.mplayer videorecord.ffmpeg)" \
 '*-T+[OPT (set title option)]:title option:_title_opt' \
 '-q[quiet]' \
 '1:file to save (DIR/basename):_files' \

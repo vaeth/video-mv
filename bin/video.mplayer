@@ -2,15 +2,14 @@
 # (C) Martin V\"ath <martin@mvath.de>
 
 . _videoscript.sh
-. push.sh
 
 name=${0##*/}
 soundmagic='frameno.avi'
 morepass='divx2pass.log'
 morepassed="${morepass}.bak"
-defpass=4
 therefinement='bidir_refine=4:dia=2'
 carddimension='width=768:height=576'
+rump=
 
 case ${name} in
 *encod*|*file*|*conv*)
@@ -25,12 +24,31 @@ case ${name} in
 	mplayer=:;;
 esac
 
+UsageFFmpeg() {
+	if ${mplayer}
+	then	Echo "
+If this script is called by a name containing \"ff\" or \"av\" then
+ffmpeg/avplay/avconv is used instead of mplayer/mencoder, see also option -@"
+	else	Echo "
+If this script is called by a name not containing \"ff\" or \"av\" then
+mplayer/mencoder is used instead of ffmpeg/avplay/avconv, see also option -@"
+	fi
+}
+
 Usage() {
+	if ${mplayer}
+	then	useboth='mplayer/mencoder'
+		usemplayer='mplayer'
+		usemencoder='mencoder'
+	else	useboth='ffmpeg/av*'
+		usemplayer='ffmpeg/avplay'
+		usemencoder='ffmpeg/avconv'
+	fi
 	if ! ${fromfile}
 	then	Echo \
-"Usage: ${name} [options] FILE [additional mplayer/mencoder-options]
-Records TV to FILE, using mencoder and setting alsa-mixer appropriately.
-If FILE is '-', then the video is displayed (mplayer) instead of recorded.
+"Usage: ${name} [options] FILE [additional ${userboth}-options]
+Records TV to FILE, using ${usemencoder} and setting alsa-mixer.
+If FILE is '-', then the video is displayed (${usemplayer}), not recorded.
 
 Certain intermediate files may be produced or deleted in the current directory,
 so better run this script in an empty directory.
@@ -38,19 +56,22 @@ so better run this script in an empty directory.
 If this script is called by a name containing \"encod\" \"file\" or \"conv\"
 this script does something rather different (see also option -v):
 In this case, a file is converted with ${defpass} passes (see -v? for details)."
+		UsageFFmpeg
 	else	Echo "Usage:
-${name} [options] PASS INFILE OUTFILE [mplayer-options] [-- extra-files]
-Calls mencoder to compress a file (typically with ${defpass} passes).
+${name} [options] PASS INFILE OUTFILE [${useboth}-options] [-- extra-files]
+Calls ${usemencoder} to encode a file (typically with ${defpass} passes)
+or ${usemplayer} to view a file.
 
 Certain intermediate files may be produced or deleted in the current directory,
 so better run this script in an empty directory.
 
 If this script is called by a name not containing \"encod\" \"file\" or \"conv\"
 this script does something rather different (see also option -v):
-In this case, a file is recorded from TV (see -v? for details).
-
+In this case, a file is recorded from TV (see -v? for details)."
+		UsageFFmpeg
+		Echo "
 PASS can have the following values
-  -    Do not encode but display using mplayer (no OUTFILE argument)
+  -    Do not encode but display using ${usemplayer} (no OUTFILE argument)
   X-Y  Do all passes from X to Y (including X and Y).
   X    Do only pass X
   c    Copy video whatever it was (sound is treated according to the options)
@@ -73,9 +94,7 @@ use \"c\" with soundencoding options and then encode the resulting file."
 The following options are available:
 
 Various:
--@   Use experimentally ffmpeg/libav instead of mplayer/mencoder.
-     Currently, not all other options/modes are supported with this option.
--f   Force overwrite of existing output file
+-f   Force overwrite of existing output/intermediate files
 -p   Print mencoder call instead of executing (so you can edit)
 -#   Skip most sanity checks for the options
 -q   quiet"
@@ -89,8 +108,13 @@ Various:
      If you want to ignore the output always (e.g. if the last pass is smaller
      than the maximal pass), you can explicitly specify /dev/null as OUTFILE."
 	Echo \
-"-v   Magic option to behave as if called under a different name (see above)
-     This should be the first option, because it resets all other options.
+"-v   Toggle as if called with/without \"encod\" in the name (see above).
+     This should be the first option (except for possibly -@) because it
+     resets all other options.
+-@   Toggle as if called with/without \"ff\" in the name (see above).
+     This does not reset appropriate defaults. Therefore, if you use this
+     option, you will likely want to specify -@vv as first options to get
+     appropriate defaults.
 
 Videostream:
 -m C Record using container format C, current value ${oftype}. Some choices:
@@ -115,11 +139,16 @@ Videostream:
 -h H Use hue        H (currently: ${hue})
 -s S Use saturation S (currently: ${saturation})"
 	fi
-	Echo \
+	if ${mplayer}
+	then	Echo \
 "-M X set mbd (see mencoder manpage) currently ${mbd} (0: fast, 2: high quality)
 -r Use refinement options (higher quality, slowdown): ${therefinement}
--R Remove current refinement options (currently: \"${refinement}\")
--F XXX Add XXX to the videofilter chain "\
+-R Remove current refinement options (currently: \"${refinement}\")"
+	else	Echo \
+"-r RUMP Use RUMP as prefix for temporary files (currently: ${rump:-ffmpeg2pass})"
+	fi
+	Echo \
+"-F XXX Add XXX to the videofilter chain" \
 "(e.g. \"yadif\", \"pp=lb\", \"pullup\" or \"filmdint\")
    If you use this, softskip is automatically added.
 -e hh:mm:ss or Y or Xmb   stop after recording hh:mm:ss/X seconds/Y megabyte
@@ -262,14 +291,18 @@ CalcLamebr() {
 # This must be done in a function, because we must repeat this for option -v.
 
 SetDefaults() {
+	if ${mplayer}
+	then	defpass=4
+	else	defpass=2
+	fi
 	titleopt=
 # General options
 	force=false
 	noexec=false
 	quiet=
 	alwaysout=false
-	sanity=:
 	oftype=
+	sanity=:
 # Sound-related options
 	alsa=false
 	amode=1
@@ -280,7 +313,10 @@ SetDefaults() {
 	lamebr=128
 	turbolastpass=0
 # Video-related and various other options
-	codec='mpeg4'
+	if ${mplayer}
+	then	codec='mpeg4'
+	else	codec='msmpeg4'
+	fi
 	vver=2
 	keep=false
 	endpos=
@@ -303,8 +339,6 @@ SetDefaults() {
 		saturation=0
 		br=4000
 		loudness=100
-		#codec='mpeg4'
-		#oftype='mpeg'
 		lb='yadif'
 		#lb='pp=lb'
 		#lb='pullup'
@@ -477,12 +511,13 @@ fi
 if ${sanity}
 then	if [ "${totalpass}" -eq 1 ]
 	then	totalpass=0
-		Warning "Strange option: -P1
-Probably you want simple-pass-mode. Therefore I assume instead: -P0
-If you really want multi-pass-mode with only 1 pass use also option -#"
+		Warning 'Strange option: -P1
+Probably you want single-pass-mode. Therefore I assume instead: -P0
+If you really want multi-pass-mode with only 1 pass use also option -#'
 	fi
 	${lbrspec} && ! ${soundencode} && \
-		Fatal "useless -B without soundencoding. Maybe you meant -b instead."
+		Fatal 'useless -B without soundencoding. Maybe you meant -b instead.
+If you really mean what you wrote use also opion -#'
 fi
 
 BrTest() {
@@ -494,7 +529,7 @@ BrTest() {
 
 Echoexec() {
 	quiettmp=
-	if [ "${1}" = "-q" ]
+	if [ "${1}" = '-q' ]
 	then	quiettmp=1
 		shift
 	fi
@@ -505,7 +540,8 @@ Echoexec() {
 		${have_trap} || execprefix=exec
 		shift
 	fi
-	Echo "${*}"
+	Push -c echoexecc "${@}"
+	Echo "${echoexecc}"
 	if ${noexec}
 	then	execresult=0
 	else	if [ -n "${quiettmp:++}" ]
@@ -523,11 +559,12 @@ Echoexec() {
 
 Clean() {
 	case ${1} in
-	s)	set +f
+	s)	${mplayer} || return 0
+		set +f
 		set -- "${soundmagic}" analyse.log c*':'*trace*.txt
 		set -f
 		if ${force}
-		then	Echoexec rm -f -- "${output}"
+		then	[ "${#}" -le 0 ] || Echoexec rm -f -- "${@}"
 			return
 		fi
 		for cleani
@@ -535,20 +572,31 @@ Clean() {
 				Fatal "${cleani} exists. This is obsoleted and may cause troubles."
 		done
 		return 0;;
-	t)	if ${force}
-		then	Echoexec rm -f -- "${morepass}" "${morepassed}"
-			return
-		fi
-		for cleani in "${morepass}" "${morepassed}"
-		do	test -r "${cleani}" && \
-				Fatal "${cleani} exists. This is only admissible for higher passes."
-		done
-		return 0;;
+	t)	cleani=:;;
 	f)	cleani=false;;
 	l)	cleani=${keep};;
 	*)	Fatal "internal error: call of function Clean with bad argument ${1}";;
 	esac
-	${cleani} || Echoexec rm -f -- "${morepass}" "${morepassed}"
+	${cleani} && return
+	if ! ${mplayer}
+	then	set +f
+		set -- "${rump:-ffmpeg2pass}"*.log
+		set -f
+		[ "${1}" != "${rump:-ffmpeg2pass}*.log" ] || set --
+	else	set -- "${morepass}" "${morepassed}"
+	fi
+	if [ "${1}" != 't' ]
+	then	[ "${#}" -le 0 ] || Echoexec rm -f -- "${@}"
+		return
+	fi
+	if ${force}
+	then	Echoexec rm -f -- "${@}" "${output}"
+		return
+	fi
+	for cleani
+	do	test -r "${cleani}" && \
+			Fatal "${cleani} exists. This is only admissible for higher passes."
+	done
 }
 
 # Parse pass and infile arguments
@@ -580,7 +628,7 @@ case ${inputfile} in
 *)
 	[ -n "${inputfile:++}" ] || Usage
 	${noexec} || test -r "${inputfile}" || Usage
-	if ${mplayer} || ! ${dorecord}
+	if ${mplayer}
 	then	Push input -- "${inputfile}"
 	else	Push input -i "${inputfile}"
 	fi;;
@@ -602,12 +650,17 @@ v)
 	record=:
 	needname=:
 	frompass=${passarg%%-*}
-	topass=${passarg##*-};;
+	topass=${passarg##*-}
 	# In earlier versions, "videoencode -P2 1 infile" automagically
 	# sent the output to /dev/null - hence no outfile argument.
 	# This was very confusing to the user.
 	# [ "${totalpass}" -gt 0 ] && [ "${topass}" -lt "${totalpass}" ] && \
 	#	needname=${alwaysout}
+	if [ "${totalpass:-2}" -gt 2 ] || [ "${topass:-2}" -gt 2 ] && ! ${mplayer}
+	then	Warning 'More than 2 passes only valid for mencoder. Truncating to 2'
+		[ "${totalpass:-2}" -le 2 ] || totalpass=2
+		[ "${topass:-2}" -le 2 ] || topass=2
+	fi;;
 *)
 	Usage;;
 esac
@@ -629,6 +682,7 @@ then	[ ${#} -lt 1 ] && Usage
 	fi
 	shift
 fi
+
 
 # Collect remaining arguments in add/addname
 
@@ -764,11 +818,13 @@ CalcSopt() {
 		Push sopt '-nosound'
 		return
 	fi
-	if ${alsa}
-	then	tvaudio='alsa:'
-	else	tvaudio=
+	if ${2}
+	then	if ${alsa}
+		then	tvaudio='alsa:'
+		else	tvaudio=
+		fi
+		tvaudio="${tvaudio}audiorate=44100:forcechan=${forcechan}:amode=${amode}"
 	fi
-	tvaudio="${tvaudio}audiorate=44100:forcechan=${forcechan}:amode=${amode}"
 	case ${1} in
 	l)	Push sopt '-oac' 'mp3lame' '-lameopts' \
 			"${lametype}:br=${lamebreff}:aq=${lamequality}:q=0:mode=${lamemode}";;
@@ -780,18 +836,21 @@ CalcSopt() {
 CalcSoptFFmpeg() {
 	if [ -z "${sound:++}" ]
 	then	Push sopt '-an'
+		return
 	fi
-	if ${alsa}
-	then	Push sopt '-f' 'alsa' '-i' 'hw:0'
-	else	Push sopt '-f' 'oss' '-i' '/dev/dsp'
+	if [ -n "${2}" ]
+	then	if ${alsa}
+		then	Push sopt '-f' 'alsa' '-i' 'hw:0'
+		else	Push sopt '-f' 'oss' '-i' '/dev/dsp'
+		fi
+		Push sopt '-ar' '44100'
+		Push sopt '-ac' "${forcechan}"
 	fi
-	Push sopt '-ar' '44100'
-	Push sopt '-ac' "${forcechan}"
 	case ${1} in
 	l)	Push sopt '-c:a' 'libmp3lame' '-q:a' "${lamequality}" \
 			'-b:a' "${lamebreff}k";;
+	c)	Push sopt '-c:a' 'copy';;
 	p)	Push sopt '-c:a' 'pcm_u8';;
-	c)	Push sopt '-c:a' 'pcm_u8';;
 	esac
 }
 
@@ -804,8 +863,11 @@ Pass() {
 	Push -c tvopt
 	case ${arg} in
 	c)	CalcSopt "${sound}"
-		Push -c vopt 'copy';;
-	v)	CalcSopt "${sound}"
+		if ${mplayer}
+		then	Push -c vopt 'copy'
+		else	Push -c recopt '-c:v' 'copy'
+		fi;;
+	v)	CalcSopt "${sound}" :
 		if ${mplayer}
 		then	tvopt="driver=v4l${vver}"
 			[ -z "${device:++}" ] || tvopt="${tvopt}:device=${device}"
@@ -832,8 +894,9 @@ Pass() {
 				&& : Push tvopt -hue "${hue}"
 			[ -n "${saturation:++}" ] && [ "${saturation}" -ne 0 ] \
 				&& : Push tvopt -saturation "${saturation}"
-			! ${record} || Push tvopt '-i'
-			Push tvopt "${device:-/dev/video0}"
+			if ${record}
+			then	Push -c input '-i' "${device:-/dev/video0}"
+			fi
 			Push -c recopt '-b:v' "${br}k"
 		fi;;
 	-)	:;;
@@ -841,24 +904,31 @@ Pass() {
 		currvpass=${arg}
 		if ${mplayer}
 		then	lavcopts="vbitrate=${br}"
-		else	Push -c recopt '-b:v' "${br}k"
+		else	Push -c recopt '-c:v' "${codec}" '-b:v' "${br}k"
 		fi
 		if [ "${totalpass}" -gt 0 ]
 		then	if [ "${arg}" -lt "${totalpass}" ]
 			then	# Do not encode the sound except in the last pass:
 				CalcSopt 'c'
-				if [ "${arg}" -lt "${topass}" ]
+				if [ "${arg}" -lt "${topass}" ] && ${mplayer}
 				then	${alwaysout} || outputtmp='/dev/null'
 				fi
-				[ "${arg}" -le "${turbolastpass}" ] && lavcopts="turbo:${lavcopts}"
-				[ "${arg}" -eq 2 ] && currvpass=3
-				lavcopts="${lavcopts}:vb_strategy=2"
+				if ${mplayer}
+				then	[ "${arg}" -le "${turbolastpass}" ] && lavcopts="turbo:${lavcopts}"
+					[ "${arg}" -eq 2 ] && currvpass=3
+					lavcopts="${lavcopts}:vb_strategy=2"
+				fi
 			else	CalcSopt "${sound}"
 			fi
-			[ "${currvpass}" -gt 3 ] && currvpass=3
-			lavcopts="vpass=${currvpass}:${lavcopts}"
+			if ${mplayer}
+			then	[ "${currvpass}" -gt 3 ] && currvpass=3
+				lavcopts="vpass=${currvpass}:${lavcopts}"
+			else	Push recopt '-pass' "${arg}"
+				[ -z "${rump}" ] || \
+					Push recopt '-passlogfile' "${rump}"
+			fi
 		else	CalcSopt "${sound}"
-			[ "${arg}" -eq 1 ] || Fatal "passnumber must be 1 for 1-pass mode"
+			[ "${arg}" -eq 1 ] || Fatal 'passnumber must be 1 for 1-pass mode'
 		fi;;
 	esac
 	if [ -n "${lavcopts:++}" ]
@@ -868,20 +938,7 @@ Pass() {
 		msmpeg4*|h261*)
 			v4mv=;;
 		esac
-		if ${mplayer}
-		then	Push -c vopt 'lavc' '-lavcopts' "vcodec=${codec}:mbd=${mbd}${v4mv}:${lavcopts}"
-		else	ifstmp=${IFS}
-			Push -c vopt
-			IFS=':'
-			for lavcopt in ${lavcopts}
-			do	lavcopta=${lavcopt#*=}
-				case ${lavcopta} in
-				v4mv)	continue;;
-				esac
-				Push vopt "${lavcopta}" "${lavcopt%%*=}"
-			done
-			IFS=${ifstmp}
-		fi
+		Push -c vopt 'lavc' '-lavcopts' "vcodec=${codec}:mbd=${mbd}${v4mv}:${lavcopts}"
 	fi
 	Echoexec date
 	[ "${currvpass}" -eq 3 ] && Echoexec cp -a -- "${morepass}" "${morepassed}"
@@ -901,23 +958,23 @@ Pass() {
 			${endpos} ${skips} ${skipb} ${add} \
 			-o \"\${outputtmp}\" ${input} ${addname}"
 		elif ${ffmpeg}
-		then	eval "${doexec} ffmpeg \${quiet} ${ofarg} \
-			${tvopt} ${aspect} ${sopt} ${vf} \
-			${endpos} ${skips} ${skipb} ${add} ${recopt} \
+		then	eval "${doexec} ffmpeg \${quiet} ${vopt} \
+			${tvopt} ${input}  ${aspect} ${sopt} ${vf} \
+			${endpos} ${skips} ${skipb} ${add} ${recopt} ${ofarg} \
 			-- \"\${outputtmp}\"" # \${noodml} has no substitute
-		else	eval "${doexec} avconv \${quiet} ${ofarg} \
-			${tvopt} ${aspect} ${sopt} ${vf} \
-			${endpos} ${skips} ${skipb} ${add} ${recopt} \
+		else	eval "${doexec} avconv \${quiet} ${vopt} \
+			${tvopt} ${input} ${aspect} ${sopt} ${vf} \
+			${endpos} ${skips} ${skipb} ${add} ${recopt} ${ofarg} \
 			-- \"\${outputtmp}\"" # \${noodml} has no substitute
 		fi
 	elif ${mplayer}
 	then	eval "${doexec} mplayer \${quiet} ${tvopt} ${vf} ${aspect} \
 			${skips} ${skipb} ${add} ${input} ${addname}"
 	elif ${ffmpeg}
-	then	eval "${doexec} ffplay \${quiet} ${tvopt} ${vf} ${aspect} \
-			${skips} ${skipb} ${add} ${input}"
-	else	eval "${doexec} avplay \${quiet} ${tvopt} ${vf} ${aspect} \
-			${skips} ${skipb} ${add} ${input}"
+	then	eval "${doexec} ffplay \${quiet} ${tvopt} ${input} ${vf}
+			${aspect} ${skips} ${skipb} ${add}"
+	else	eval "${doexec} avplay \${quiet} ${tvopt} ${input} ${vf}
+			${aspect} ${skips} ${skipb} ${add}"
 	fi
 	retvalue=${execresult}
 	return ${retvalue}
@@ -950,6 +1007,8 @@ If you really meant what you typed, use in addition option -!"
 				Verbose "Pass ${currpass}|${2} of ${totalpass}"
 			fi
 		fi
+		${mplayer} || [ "${currpass}" -eq 1 ] || \
+			Echoexec rm -f -- "${output}"
 		Pass "${currpass}" noexec || return ${retvalue}
 		currpass=$(( ${currpass} + 1 ))
 	done

@@ -13,7 +13,7 @@ CalcChannels() {
 
 Usage() {
 	CalcChannels || calcchannels="nonreadable ${calcchannels}"
-	printf '%s\n' "Usage: ${0##*/} [options] channel [FILE]
+	Echo "Usage: ${0##*/} [options] channel [FILE]
 If no FILE is given, a random name is chosen; use - to select standard output.
 Options:
 -f      If FILE exists override it
@@ -27,6 +27,7 @@ Options:
 -a NUM  Use adaptor NUM
 -F NUM  Use frontend NUM
 -d NUM  Use demux NUM
+-n      Output only command but do not execute something
 -q      Quiet
 -T[pPfHsS-] pass option(s) to the title script; - means no title"
 	exit ${1:-1}
@@ -52,6 +53,7 @@ SetDefaults() {
 	frontend=
 	demux=
 	verbose=:
+	showonly=false
 	dvb=:
 	SourceDefaults
 }
@@ -59,8 +61,9 @@ SetDefaults() {
 # Parse options
 
 SetDefaults
-while getopts 'qrpfc:a:F:d:e:t:s:T:h?' opt
+while getopts 'nqrpfc:a:F:d:e:t:s:T:h?' opt
 do	case ${opt} in
+	n)	showonly=:;;
 	q)	verbose=false;;
 	r)	pass=r;;
 	p)	pass=p;;
@@ -105,12 +108,12 @@ then	CalcSeconds stop "${stop}"
 fi
 
 if [ -n "${start:++}" ]
-then	sleepto ${titleopt:+"-T${titleopt}"} "${start}" || Exit
+then	MyExec sleepto ${titleopt:+"-T${titleopt}"} "${start}" || Exit
 fi
 
 if ${random}
 then	file=`mktemp /tmp/${0##*/}.${$}XXXXXXXX` && test -r "${file}" || \
-		Fatal "mktemp failed"
+		Fatal 'mktemp failed'
 else	Check
 fi
 
@@ -124,10 +127,13 @@ ${0##*/}: ${1} -> ${text}
 "
 Title "${1}->${text}"
 
-MyExec tzap ${stop:+-t ${stop}} -${pass} ${file:+"${file}"} \
-	${channels:+-c "${channels}"} \
-	${adapter:+-a "${adapter}"} \
-	${frontend:+-f "${frontend}"} \
-	${demux:+-d "${demux}"} \
-	-- "${1}"
+Push -c args "-${pass}"
+[ -z "${file}" ] || Push args "${file}"
+[ -z "${stop}" ] || Push args '-t' "${stop}"
+[ -z "${channels}" ] || Push args '-c' "${channels}"
+[ -z "${adapter}" ]  || Push args '-a' "${adapter}"
+[ -z "${frontend}" ] || Push args '-f' "${frontend}"
+[ -z "${demux}" ] || Push args '-d' "${demux}"
+
+eval MyExec tzap ${args} -- "\${1}"
 Exit

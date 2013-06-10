@@ -1,10 +1,21 @@
-#compdef video videoencode
+#compdef video videoencode video.mplayer videoencode.mplayer video.ffmpeg videoencode.ffmpeg
 local curcontext="$curcontext" state state_descr line
 typeset -A opt_args
-local args
+local args mplayer prog defpass
+case $service in
+(*ff*|*av*)
+	prog=ffmpeg
+	defpass=2
+	mplayer=false;;
+(*)
+	prog=mplayer
+	defpass=4
+	mplayer=:;;
+esac
 args=(
 '(1 2 -)-\\?[help]'
-'-@[Use experimentally ffmpeg/libav instead of mplayer/mencoder]'
+'-@[Toggle ffmpeg/libav <-> mplayer/mencoder]'
+'-v[Toggle TV <-> file input]'
 '-f[Force overwrite of existing output file]'
 '-p[Print instead of executing]'
 '-\#[Skip most sanity checks for the options]'
@@ -12,10 +23,7 @@ args=(
 '-m+[CONTAINER. Define record container format]:container format:(avi mkv mpeg lavf rawvideo rawaudio)'
 '-4+[CODEC.  Set codec format]:codec format:->codec'
 '-b+[BITRATE. Set bitrate]:bit rate:(600 700 800 900 1000 1200 1400 1600)'
-'-M+[MBD. Set mbd value]:mbd value:->mbd'
-'-r[Use refinement options (slow)]'
-'-R[Remove refinement options (fast)]'
-'-F+[FILTER (Add FILTER to chain)]:video filter:("pp=lb" pullup filmdint)'
+'-F+[FILTER (Add FILTER to chain)]:video filter:(yadif "pp=lb" pullup filmdint)'
 '-e+[TIME (Specify end time/size)]:stop time:->stoptime'
 '-C+[CROP (horizontally)]:width\:xmin:->horizontal'
 '-c+[CROP (vertically)]:height\:ymin:->vertical'
@@ -34,8 +42,18 @@ args=(
 '-Q+[lame quality]:lame quality:(0)'
 '*-T+[OPT (set title option)]:title option:_title_opt'
 )
+if ${mplayer}
+then	args+=(
+'-M+[MBD. Set mbd value]:mbd value:->mbd'
+'-r[Use refinement options (slow)]'
+'-R[Remove refinement options (fast)]'
+)
+else	args+=(
+'-r+[RUMP (Set prefix for tempfiles)]:prefix for tempfiles:(ffmpeg2pass)'
+)
+fi
 case $service in
-(*enc*)
+(*encod*|*file*|*conv*)
 args+=(
 '-P+[MAXPASS (0 means implicit 1-pass)]:maximal pass:(0 4)'
 '-O[Output also intermediate pass files]'
@@ -47,11 +65,11 @@ args+=(
 '-g[No odml headers; opposite of -G (default)]'
 '-u[unencoded sound]'
 '-l[lame CBR sound (default)]'
-'-S+[PERCENT (Use PERCENT loudness for sound capturing(]:loudness percentage:(90 100)'
-'1:Passes:(- 1-4)'
+'-S+[PERCENT (Use PERCENT loudness for sound capturing)]:loudness percentage:(90 100)'
+'1:Passes:(- "1-$defpass")'
 '2:Input file:_files'
 '3:Output file:_files'
-'*:mplayer options:'
+"*:$prog options:"
 );;
 (*)
 args+=(
@@ -69,7 +87,7 @@ args+=(
 '-u[unencoded sound (default)]'
 '-l[lame CBR sound (not default since too slow with -Q 0)]'
 '1:Output file or live display:->livefile'
-'*:mplayer options:'
+"*:$prog options:"
 );;
 esac
 _arguments -C -s -S -A '-?*' : $args
