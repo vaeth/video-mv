@@ -9,6 +9,7 @@ morepass='divx2pass.log'
 morepassed="${morepass}.bak"
 therefinement='bidir_refine=4:dia=2'
 carddimension='width=768:height=576'
+mplayercmd='mplayer'
 rump=
 
 case ${name} in
@@ -141,7 +142,8 @@ Videostream:
 	fi
 	if ${mplayer}
 	then	Echo \
-"-M X set mbd (see mencoder manpage) currently ${mbd} (0: fast, 2: high quality)
+"-t   Use mplayer2 instead of mplayer
+-M X set mbd (see mencoder manpage) currently ${mbd} (0: fast, 2: high quality)
 -r Use refinement options (higher quality, slowdown): ${therefinement}
 -R Remove current refinement options (currently: \"${refinement}\")"
 	else	Echo \
@@ -329,7 +331,7 @@ SetDefaults() {
 	expand=
 	loudnessplay=100
 	lamequality=0
-	optargs='@fpqrRm:4:Ggb:M:F:e:Ec:C:w:W:noUA:01ulaB:Q:vzZ.T:!?'
+	optargs='@fpqrRm:4:Ggb:M:F:e:Ec:C:w:W:nNoUA:01ulaB:Q:vzZ.T:!?'
 # Differing defaults for video/videoencode:
 	if ! ${fromfile}
 	then	optargs="${optargs}L23:i:d:k:Hh:s:S:I:V:D:"
@@ -389,6 +391,7 @@ OPTIND=1
 while getopts "${optargs}" opt
 do	case ${opt} in
 	'@')	mplayer=false;;
+	N)	mplayercmd='mplayer2';;
 	f)	force=:;;
 	k)	keep=:;;
 	p)	noexec=:;;
@@ -480,12 +483,12 @@ do	case ${opt} in
 	H)	hqdn=;;
 	L)	lb=;;
 	D)	device=${OPTARG};;
+	z)	alsa=false;;
+	Z)	alsa=:;;
 # Special options for File input
 	P)	totalpass=${OPTARG};;
 	t)	turbolastpass=${OPTARG};;
 	O)	alwaysout=:;;
-	z)	alsa=false;;
-	Z)	alsa=:;;
 	'.')	sound='p';;
 # The only remaining admissible options are "help" options:
 	*)	Usage 0;;
@@ -894,9 +897,7 @@ Pass() {
 				&& : Push tvopt -hue "${hue}"
 			[ -n "${saturation:++}" ] && [ "${saturation}" -ne 0 ] \
 				&& : Push tvopt -saturation "${saturation}"
-			if ${record}
-			then	Push -c input '-i' "${device:-/dev/video0}"
-			fi
+			Push -c input '-i' "${device:-/dev/video0}"
 			Push -c recopt '-b:v' "${br}k"
 		fi;;
 	-)	:;;
@@ -968,7 +969,8 @@ Pass() {
 			-- \"\${outputtmp}\"" # \${noodml} has no substitute
 		fi
 	elif ${mplayer}
-	then	eval "${doexec} mplayer \${quiet} ${tvopt} ${vf} ${aspect} \
+	then	eval "${doexec} \"\${mplayercmd}\" \
+			\${quiet} ${tvopt} ${vf} ${aspect} \
 			${skips} ${skipb} ${add} ${input} ${addname}"
 	elif ${ffmpeg}
 	then	eval "${doexec} ffplay \${quiet} ${tvopt} ${input} ${vf}
