@@ -39,7 +39,7 @@ Push() {
 MyExec() {
 	if ${verbose} || ${showonly}
 	then	Push -c myexec "${@}"
-		Echo "${v}"
+		Echo "${myexec}"
 		! ${showonly} || return 0
 	fi
 	"${@}"

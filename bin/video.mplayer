@@ -50,6 +50,7 @@ Usage() {
 "Usage: ${name} [options] FILE [additional ${userboth}-options]
 Records TV to FILE, using ${usemencoder} and setting alsa-mixer.
 If FILE is '-', then the video is displayed (${usemplayer}), not recorded.
+If FILE is '+', then stdout is used.
 
 Certain intermediate files may be produced or deleted in the current directory,
 so better run this script in an empty directory.
@@ -119,7 +120,7 @@ Various:
 
 Videostream:
 -m C Record using container format C, current value ${oftype}. Some choices:
-     mkv avi mpeg lavf rawvideo rawaudio
+     matroska(.mkv) avi mpeg lavf rawvideo rawaudio
      If empty (default for mencoder) use filename extension.
 -4 C Record using codec C. Current value ${codec}. Some choices:
      mpeg4 (Divx4/5), msmpeg4v2, h261, h263, h263p, mjpeg, msmpeg4 (Divx3),...
@@ -151,7 +152,7 @@ Videostream:
 	fi
 	Echo \
 "-F XXX Add XXX to the videofilter chain" \
-"(e.g. \"yadif\", \"pp=lb\", \"pullup\" or \"filmdint\")
+"(e.g. \"hqdn3d\", \"yadif\", \"pp=lb\", \"pullup\", \"filmdint\")
    If you use this, softskip is automatically added.
 -e hh:mm:ss or Y or Xmb   stop after recording hh:mm:ss/X seconds/Y megabyte
      (be aware that sound and picture will stop at slightly different times)"
@@ -295,7 +296,9 @@ CalcLamebr() {
 SetDefaults() {
 	if ${mplayer}
 	then	defpass=4
+		oftype=
 	else	defpass=2
+		oftype='avi'
 	fi
 	titleopt=
 # General options
@@ -303,7 +306,6 @@ SetDefaults() {
 	noexec=false
 	quiet=
 	alwaysout=false
-	oftype=
 	sanity=:
 # Sound-related options
 	alsa=false
@@ -331,7 +333,7 @@ SetDefaults() {
 	expand=
 	loudnessplay=100
 	lamequality=0
-	optargs='@fpqrRm:4:Ggb:M:F:e:Ec:C:w:W:nNoUA:01ulaB:Q:vzZ.T:!?'
+	optargs='@fpqrRm:4:Ggb:M:F:e:Ec:C:w:W:nNoUA:01ulaB:Q:vzZ.T:#?'
 # Differing defaults for video/videoencode:
 	if ! ${fromfile}
 	then	optargs="${optargs}L23:i:d:k:Hh:s:S:I:V:D:"
@@ -378,8 +380,8 @@ SetDefaults() {
 
 SetStartEnd() {
 	startarg=${1%%-*}
-	endpos=${1##*-}
 	[ "${startarg}" = "${1}" ] && return
+	endpos=${1##*-}
 	skips=${startarg}
 	CalcSeconds startarg "${startarg}"
 	CalcSeconds endpos "${endpos}"
@@ -446,7 +448,7 @@ do	case ${opt} in
 		lamebr=${OPTARG}
 		CalcLamebr;;
 	Q)	lamequality=${OPTARG};;
-	'!')	sanity=false;;
+	'#')	sanity=false;;
 # Options with a different meaning for TV/File input
 	u)	if ${fromfile}
 		then	sound='c'
@@ -525,7 +527,8 @@ fi
 
 BrTest() {
 	${sanity} && ${brspec} && \
-		Fatal "useless -b without encoding. Maybe you meant -s instead."
+		Fatal 'useless -b without encoding. Maybe you meant -s instead.
+If you really mean what you wrote use also opion -#'
 }
 
 # The following function is used to print and/or execute a command
@@ -561,7 +564,8 @@ Echoexec() {
 # Clean/Test intermediate files
 
 Clean() {
-	case ${1} in
+	cleanarg=${1}
+	case ${cleanarg} in
 	s)	${mplayer} || return 0
 		set +f
 		set -- "${soundmagic}" analyse.log c*':'*trace*.txt
@@ -575,12 +579,11 @@ Clean() {
 				Fatal "${cleani} exists. This is obsoleted and may cause troubles."
 		done
 		return 0;;
-	t)	cleani=:;;
+	t)	cleani=false;;
 	f)	cleani=false;;
 	l)	cleani=${keep};;
-	*)	Fatal "internal error: call of function Clean with bad argument ${1}";;
 	esac
-	${cleani} && return
+	! ${cleani} || return 0
 	if ! ${mplayer}
 	then	set +f
 		set -- "${rump:-ffmpeg2pass}"*.log
@@ -588,16 +591,12 @@ Clean() {
 		[ "${1}" != "${rump:-ffmpeg2pass}*.log" ] || set --
 	else	set -- "${morepass}" "${morepassed}"
 	fi
-	if [ "${1}" != 't' ]
+	if [ "${cleanarg}" != 't' ]
 	then	[ "${#}" -le 0 ] || Echoexec rm -f -- "${@}"
 		return
 	fi
-	if ${force}
-	then	Echoexec rm -f -- "${@}" "${output}"
-		return
-	fi
 	for cleani
-	do	test -r "${cleani}" && \
+	do	! test -r "${cleani}" || \
 			Fatal "${cleani} exists. This is only admissible for higher passes."
 	done
 }
@@ -623,19 +622,17 @@ else	[ ${#} -ge 1 ] || Usage
 fi
 
 case ${inputfile} in
--)
+-|*:/*)
 	# Special files are not tested for existence
 	:;;
-*:/*)
-	${mplayer} && Push input -- "${inputfile}";;
 *)
 	[ -n "${inputfile:++}" ] || Usage
-	${noexec} || test -r "${inputfile}" || Usage
-	if ${mplayer}
-	then	Push input -- "${inputfile}"
-	else	Push input -i "${inputfile}"
-	fi;;
+	${noexec} || test -r "${inputfile}" || Usage;;
 esac
+if ${mplayer}
+then	Push input -- "${inputfile}"
+else	Push input -i "${inputfile}"
+fi
 
 # Parse outfile argument
 
@@ -672,7 +669,9 @@ then	[ ${#} -lt 1 ] && Usage
 	[ -n "${1:++}" ] || Usage
 	output=${1}
 	if [ "${output}" = '-' ]
-	then	record=false
+	then	${fromfile} || record=false
+	elif ! ${fromfile} && [ "${output}" = '+' ]
+	then	output='-'
 	else	record=:
 		if test -r "${output}"
 		then	if ! test -b "${output}" && ! test -c "${output}"
@@ -911,7 +910,7 @@ Pass() {
 		then	if [ "${arg}" -lt "${totalpass}" ]
 			then	# Do not encode the sound except in the last pass:
 				CalcSopt 'c'
-				if [ "${arg}" -lt "${topass}" ] && ${mplayer}
+				if [ "${arg}" -lt "${topass}" ]
 				then	${alwaysout} || outputtmp='/dev/null'
 				fi
 				if ${mplayer}
@@ -959,11 +958,11 @@ Pass() {
 			${endpos} ${skips} ${skipb} ${add} \
 			-o \"\${outputtmp}\" ${input} ${addname}"
 		elif ${ffmpeg}
-		then	eval "${doexec} ffmpeg \${quiet} ${vopt} \
+		then	eval "${doexec} ffmpeg -y \${quiet} ${vopt} \
 			${tvopt} ${input}  ${aspect} ${sopt} ${vf} \
 			${endpos} ${skips} ${skipb} ${add} ${recopt} ${ofarg} \
 			-- \"\${outputtmp}\"" # \${noodml} has no substitute
-		else	eval "${doexec} avconv \${quiet} ${vopt} \
+		else	eval "${doexec} avconv -y \${quiet} ${vopt} \
 			${tvopt} ${input} ${aspect} ${sopt} ${vf} \
 			${endpos} ${skips} ${skipb} ${add} ${recopt} ${ofarg} \
 			-- \"\${outputtmp}\"" # \${noodml} has no substitute
@@ -973,9 +972,9 @@ Pass() {
 			\${quiet} ${tvopt} ${vf} ${aspect} \
 			${skips} ${skipb} ${add} ${input} ${addname}"
 	elif ${ffmpeg}
-	then	eval "${doexec} ffplay \${quiet} ${tvopt} ${input} ${vf}
+	then	eval "${doexec} ffplay \${quiet} ${tvopt} ${input} ${vf} \
 			${aspect} ${skips} ${skipb} ${add}"
-	else	eval "${doexec} avplay \${quiet} ${tvopt} ${input} ${vf}
+	else	eval "${doexec} avplay \${quiet} ${tvopt} ${input} ${vf} \
 			${aspect} ${skips} ${skipb} ${add}"
 	fi
 	retvalue=${execresult}
@@ -1009,8 +1008,6 @@ If you really meant what you typed, use in addition option -!"
 				Verbose "Pass ${currpass}|${2} of ${totalpass}"
 			fi
 		fi
-		${mplayer} || [ "${currpass}" -eq 1 ] || \
-			Echoexec rm -f -- "${output}"
 		Pass "${currpass}" noexec || return ${retvalue}
 		currpass=$(( ${currpass} + 1 ))
 	done
