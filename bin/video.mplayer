@@ -152,8 +152,9 @@ Videostream:
 	fi
 	Echo \
 "-F XXX Add XXX to the videofilter chain" \
-"(e.g. \"hqdn3d\", \"yadif\", \"pp=lb\", \"pullup\", \"filmdint\")
-   If you use this, softskip is automatically added.
+"(e.g. \"hqdn3d\", \"yadif\", \"pp=lb\", \"pullup\", \"filmdint\"
+The special value XXX=v is a shortcut for -Fyadif -Fhqdn3d)
+   With -F the filter softskip is automatically added.
 -e hh:mm:ss or Y or Xmb   stop after recording hh:mm:ss/X seconds/Y megabyte
      (be aware that sound and picture will stop at slightly different times)"
 	if ${fromfile}
@@ -406,7 +407,10 @@ do	case ${opt} in
 	g)	noodml='-noodml';;
 	b)	brspec=:; br=${OPTARG};;
 	M)	mbd=${OPTARG};;
-	F)	Push vfadd "${OPTARG}";;
+	F)	if [ "${OPTARG}" = 'v' ]
+		then	Push vfadd yadif hqdn3d
+		else	Push vfadd "${OPTARG}"
+		fi;;
 	e)	endpos=${OPTARG};;
 	E)	expand=1;;
 	c)	cropcmd=:
