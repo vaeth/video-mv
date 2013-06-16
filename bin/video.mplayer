@@ -9,20 +9,21 @@ morepass='divx2pass.log'
 morepassed="${morepass}.bak"
 therefinement='bidir_refine=4:dia=2'
 carddimension='width=768:height=576'
-mplayercmd='mplayer'
 rump=
 
+# Get defaults from filename:
+fromfile=false
+mplayer=:
+mplayercmd='mplayer'
 case ${name} in
 *encod*|*file*|*conv*)
 	fromfile=:;;
-*)
-	fromfile=false;;
 esac
 case ${name} in
 *ff*|*av*)
 	mplayer=false;;
-*)
-	mplayer=:;;
+*2*)
+	mplayercmd='mplayer2';;
 esac
 
 UsageFFmpeg() {
@@ -143,7 +144,8 @@ Videostream:
 	fi
 	if ${mplayer}
 	then	Echo \
-"-t   Use mplayer2 instead of mplayer
+"-N X (X is mplayer or mplayer2); default depends on name of the script.
+     Currrently: ${mplayercmd}
 -M X set mbd (see mencoder manpage) currently ${mbd} (0: fast, 2: high quality)
 -r Use refinement options (higher quality, slowdown): ${therefinement}
 -R Remove current refinement options (currently: \"${refinement}\")"
@@ -284,6 +286,11 @@ SetVars() {
 	${2}="
 }
 
+SetCrop() {
+	cromcmd=:
+	SetVars "${@}"
+}
+
 CalcLamebr() {
 	if [ "${forcechan}" -eq 1 ]
 	then	lamebreff=$(( ${lamebr} / 2 ))
@@ -334,7 +341,7 @@ SetDefaults() {
 	expand=
 	loudnessplay=100
 	lamequality=0
-	optargs='@fpqrRm:4:Ggb:M:F:e:Ec:C:w:W:nNoUA:01ulaB:Q:vzZ.T:#?'
+	optargs='@fpqrRm:4:Ggb:M:F:e:Ec:C:w:W:nN:oUA:01ulaB:Q:vzZ.T:#?'
 # Differing defaults for video/videoencode:
 	if ! ${fromfile}
 	then	optargs="${optargs}L23:i:d:k:Hh:s:S:I:V:D:"
@@ -389,12 +396,30 @@ SetStartEnd() {
 	endpos=$(( ${endpos} - ${startarg} ))
 }
 
+SetPlayer() {
+	case ${1} in
+	*2*)
+		mplayercmd='mplayer2';;
+	*)
+		mplayercmd='mplayer';;
+	esac
+}
+
+VFadd() {
+	case ${1} in
+	v)
+		Push vfadd yadif hqdn3d
+		return;;
+	esac
+	Push vfadd "${1}"
+}
+
 SetDefaults
 OPTIND=1
 while getopts "${optargs}" opt
 do	case ${opt} in
 	'@')	mplayer=false;;
-	N)	mplayercmd='mplayer2';;
+	N)	SetPlayer "${OPTARG}";;
 	f)	force=:;;
 	k)	keep=:;;
 	p)	noexec=:;;
@@ -407,26 +432,17 @@ do	case ${opt} in
 	g)	noodml='-noodml';;
 	b)	brspec=:; br=${OPTARG};;
 	M)	mbd=${OPTARG};;
-	F)	if [ "${OPTARG}" = 'v' ]
-		then	Push vfadd yadif hqdn3d
-		else	Push vfadd "${OPTARG}"
-		fi;;
+	F)	VFadd "${OPTARG}";;
 	e)	endpos=${OPTARG};;
 	E)	expand=1;;
-	c)	cropcmd=:
-		SetVars croph cropy "${OPTARG}";;
-	C)	cropcmd=:
-		SetVars cropw cropx "${OPTARG}";;
-	w)	cropcmd=:
-		SetVars croph cropy "${OPTARG}"
+	c)	SetCrop croph cropy "${OPTARG}";;
+	C)	SetCrop cropw cropx "${OPTARG}";;
+	w)	SetCrop croph cropy "${OPTARG}"
 		croph=$(( 400 + 16 * (${croph}) ));;
-	W)	cropcmd=:
-		SetVars croph cropy "${OPTARG}"
+	W)	SetCrop croph cropy "${OPTARG}"
 		croph=$(( 400 - 16 * (${croph}) ));;
-	n)	cropcmd=:
-		SetVars cropw cropx '704:24';;
-	o)	cropcmd=:
-		SetVars cropw cropx '762:4'
+	n)	SetCrop cropw cropx '704:24';;
+	o)	SetCrop cropw cropx '762:4'
 		SetVars croph cropy '568:6';;
 	U)	cropcmd=false;;
 	A)	SetVars aspectw aspecth "${OPTARG}";;

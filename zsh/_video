@@ -1,16 +1,18 @@
-#compdef video videoencode video.mplayer videoencode.mplayer video.ffmpeg videoencode.ffmpeg
+#compdef video videoencode video.mplayer video.mplayer2 video.ffmpeg videoencode.mplayer videoencode.mplayer2 videoencode.ffmpeg
 local curcontext="$curcontext" state state_descr line
 typeset -A opt_args
-local args mplayer prog defpass
+local args mplayer players prog defpass
+mplayer=:
+defpass=4
+prog=mplayer
+players='mplayer2'
 case $service in
 (*ff*|*av*)
 	prog=ffmpeg
 	defpass=2
 	mplayer=false;;
-(*)
-	prog=mplayer
-	defpass=4
-	mplayer=:;;
+(*2*)
+	players='mplayer';;
 esac
 args=(
 '(1 2 -)-\\?[help]'
@@ -44,8 +46,8 @@ args=(
 )
 if ${mplayer}
 then	args+=(
-'-N[Use mplayer2]'
-'-M+[MBD. Set mbd value]:mbd value:->mbd'
+"-N+[PLAYER (set player)]:player:(${players})"
+'-M+[MBD (Set mbd value)]:mbd value:->mbd'
 '-r[Use refinement options (slow)]'
 '-R[Remove refinement options (fast)]'
 )

@@ -35,8 +35,8 @@ Options:
 
 Check() {
 	${force} || [ -z "${file:++}" ] && return
-	if [ "${file}" = '-' ] || test -r "${file}"
-	then	Fatal "${2} exists.  Use -f to override"
+	if [ "${file}" != '-' ] && test -r "${file}"
+	then	Fatal "${file} exists.  Use -f to override"
 	fi
 }
 
@@ -92,6 +92,7 @@ esac
 
 CalcChannels || Fatal "cannot read channels file ${calcchannels}"
 
+fileout=:
 random=false
 file=
 if [ -z "${pass}" ]
@@ -100,8 +101,11 @@ then	pass=o
 	then	random=:
 	else	file=${2}
 		Check
+		[ "${file}" != '-' ] || fileout=false
 	fi
 fi
+
+${fileout} || verbose=false
 
 if [ -n "${stop:++}" ]
 then	CalcSeconds stop "${stop}"
@@ -122,10 +126,12 @@ then	text=${file}
 else	text="/dev/dvb/adapter${adapter:-0}/dvr0"
 fi
 
-Echo "
+if ${fileout}
+then	Echo "
 ${0##*/}: ${1} -> ${text}
 "
-Title "${1}->${text}"
+	Title "${1}->${text}"
+fi
 
 Push -c args "-${pass}"
 [ -z "${file}" ] || Push args "${file}"
