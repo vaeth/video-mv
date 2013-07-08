@@ -33,7 +33,7 @@ args=(
 '-W+[CROP (vertically 400-16x)]:height(400-16x)\:ymin:(0 1 2 3 4)'
 '-n[chop right boundary\: as -C 704\:24]'
 '-E[expand instead of crop]'
-'-A[WIDTH\[\:HEIGHT\] (change aspect to force WIDTH)]:width\[\:height\] (default is 720\:576 or crop values):->aspect'
+'-A+[WIDTH\[\:HEIGHT\] (change aspect to force WIDTH)]:width\[\:height\] (default is 720\:576 or crop values):->aspect'
 '-0[no sound]'
 '-1[mono sound]'
 '-z[sound\: no alsa]'
