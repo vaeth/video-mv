@@ -1,12 +1,12 @@
 #compdef dvb-t
 local curcontext="$curcontext" state state_descr line
 typeset -A opt_args
-_arguments -s -S -A '-?*' : \
+_arguments -s -S -A '-*' : \
 '(1 2 -)'{'-h','-H','-\\?'}'[help]' \
 '(1 -p)-r[set up /dev/dvb/adapterX/dvr0]' \
 '(1 -r)-p[add pat and pmt, implies -r]' \
 '-q[quiet]' \
-'-n[dry run: execute nothing]' \
+'-n[dry run\: execute nothing]' \
 '*-c+[FILE (channel file)]:channel file:_files' \
 '-s+[TIME (set start)]:start time:("23\:59" "23\:59\:00 31 Dec 2013" "23\:59\:01 today" "now")' \
 {'(-e)-t','(-t)-e'}'+[TIME (set stop/length)]:stop time:->stoptime' \
