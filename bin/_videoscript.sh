@@ -14,7 +14,7 @@ Verbose() {
 }
 
 Message() {
-	Echo "${name}: ${*}" >&2
+	Echo "${0##*/}: ${*}" >&2
 }
 
 Warning() {
