@@ -1,9 +1,9 @@
-#! /usr/bin/env sh
+#!/usr/bin/env sh
 # (C) Martin V\"ath <martin@mvath.de>
 
 . _videoscript.sh
 
-case ${name} in
+case ${0##*/} in
 *ff*|*av*)
 	modus='ffmpeg';;
 *)
@@ -60,7 +60,7 @@ do	case ${opt} in
 	esac
 done
 shift $(( ${OPTIND} -1 ))
-[ ${#} -lt 1 ] && Usage
+[ ${#} -ge 1 ] || Usage
 
 # Interpret parameters
 
@@ -76,14 +76,17 @@ srcdir=${1%/*}
 shift
 
 time=${1}
-[ ${#} -lt 1 ] && Usage
+[ ${#} -ge 1 ] || Usage
 shift
 len=${1}
 case ${len} in
-0|-)	len=
+0|-)
+	len=
 	shift;;
--*)	:;;
-*)	[ ${#} -ge 1 ] && shift;;
+-*)
+	:;;
+*)
+	[ ${#} -ge 1 ] && shift;;
 esac
 
 MyCd() {

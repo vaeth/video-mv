@@ -1,4 +1,4 @@
-#! /usr/bin/env sh
+#!/usr/bin/env sh
 # This file is sourced by video/videoencode/dvb-t to set some defaults.
 
 # The first part is to set some defaults common for dvb-t and video{,encode}.
