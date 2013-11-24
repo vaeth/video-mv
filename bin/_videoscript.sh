@@ -52,22 +52,37 @@ SourceDefaults() {
 	fi
 }
 
+Calc_cs_sec() {
+	cs_arg=${1%%:*}
+	while :
+	do	case ${cs_arg} in
+		0*)
+			cs_arg=${cs_arg#0}
+			continue;;
+		esac
+		break
+	done
+	if [ "${cs_arg:-0}" -ne 0 ]
+	then	[ ${#} -eq 1 ] || cs_arg=$(( ${cs_arg} * ${2} ))
+		cs_sec=$(( ${cs_sec} + ${cs_arg} ))
+	fi
+	unset cs_arg
+}
+
 CalcSeconds() {
 	cs_sec=${2:-0}
 	case ${2} in
 	*:*)
+		cs_sec=0
 		cs_cur=${2}':'
-		cs_arg=${cs_cur%%:*}
-		cs_sec=$(( ${cs_arg:-0} * 3600 ))
+		Calc_cs_sec "${cs_cur}" 3600
 		cs_cur=${cs_cur#*:}
-		cs_arg=${cs_cur%%:*}
-		cs_sec=$(( ${cs_arg:-0} * 60 + ${cs_sec} ))
+		Calc_cs_sec "${cs_cur}" 60
 		cs_cur=${cs_cur#*:}
-		cs_arg=${cs_cur%%:*}
-		cs_sec=$(( ${cs_arg:-0} + ${cs_sec} ));;
+		Calc_cs_sec "${cs_cur}"
 	esac
 	eval ${1}=\${cs_sec}
-	unset cs_cur cs_arg cs_sec
+	unset cs_cur cs_sec
 }
 
 TitleOpt() {
