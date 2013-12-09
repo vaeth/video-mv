@@ -182,14 +182,15 @@ The special value XXX=v is a shortcut for -Fyadif -Fhqdn3d)
 -w h:ymin same as -c \"\$((400+h*16)):ymin\" for wide (less high) movies
 -W h:ymin same as -c \"\$((400-h*16)):ymin\" for wide (less high) movies
 -n   Same as -C 704:24 (chop right boundary for certain narrow movies)
--E \"expand\" instead of \"crop\"
+-E X (use X instead of \"crop\"; possible values: expand, scale, crop)
 -A X[:Y] Change aspect ratio to force width X (typically 1024 or 768)
          If X is empty, X defaults to the  width crop value resp. to 720
          If Y is empty, Y defaults to the height crop value resp. to 576
 
 Audiostream:
 -0   Silent - no sound
--1   Use mono sound instead of stereo (use internally half bitrate for lame)"
+-1   Use mono sound instead of stereo (use internally half bitrate for lame)
+-8 X resample to rate X (typically X=44100 or X=48000)"
 	if ! ${fromfile}
 	then	Echo \
 "-3 X Use language X (X=1/2), implies -1
@@ -291,6 +292,17 @@ SetCrop() {
 	SetVars "${@}"
 }
 
+SetExpand() {
+	case ${1} in
+	[eE]*|*[xX]*)
+		expand=expand;;
+	[sS]*|*[aA]*|*[lL]*|*[ee*])
+		expand=scale;;
+	*)
+		expand=crop;;
+	esac
+}
+
 CalcLamebr() {
 	if [ "${forcechan}" -eq 1 ]
 	then	lamebreff=$(( ${lamebr} / 2 ))
@@ -338,10 +350,11 @@ SetDefaults() {
 	Push -c vfadd
 	SetVars aspectw aspecth ':'
 	brspec=false
-	expand=
+	SetExpand crop
+	resample=
 	loudnessplay=100
 	lamequality=0
-	optargs='@fpqrRm:4:Ggb:M:F:e:Ec:C:w:W:nN:oUA:01ulaB:Q:vzZ.T:#?'
+	optargs='@fpqrRm:4:8:Ggb:M:F:e:E:c:C:w:W:nN:oUA:01ulaB:Q:vzZ.T:#?'
 # Differing defaults for video/videoencode:
 	if ! ${fromfile}
 	then	optargs="${optargs}L23:i:d:k:Hh:s:S:I:V:D:"
@@ -434,7 +447,7 @@ do	case ${opt} in
 	M)	mbd=${OPTARG};;
 	F)	VFadd "${OPTARG}";;
 	e)	endpos=${OPTARG};;
-	E)	expand=1;;
+	E)	SetExpand "${OPTARG}";;
 	c)	SetCrop croph cropy "${OPTARG}";;
 	C)	SetCrop cropw cropx "${OPTARG}";;
 	w)	SetCrop croph cropy "${OPTARG}"
@@ -458,6 +471,7 @@ do	case ${opt} in
 		else	amode=3
 		fi
 		CalcLamebr;;
+	8)	resample=${OPTARG};;
 	l)	soundencode=:
 		sound='l'
 		lametype='cbr';;
@@ -760,12 +774,7 @@ fi
 # We replace it by the correct value for the video filter.
 
 if ${cropcmd}
-then	if [ -n "${expand:++}" ]
-	then	cropcmd='expand'
-		expand=':'
-	else	cropcmd='crop'
-	fi
-	cropcmd="${cropcmd}=${cropw}:${croph}:${cropx}:${cropy}${expand}"
+then	cropcmd="${expand}=${cropw}:${croph}:${cropx}:${cropy}"
 else	cropcmd=
 fi
 
@@ -780,17 +789,36 @@ fi
 eval "Push -c vfadd \${cropcmd} \${hqdn} \${lb} ${vfadd}"
 
 CalcVF() {
-	if [ ${#} -eq 0 ]
-	then	Push -c vf
-		return
-	fi
+	Push -c vf
+	[ ${#} -eq 0 ] && return
 	vfadd=
 	for vfi
 	do	vfadd="${vfadd},${vfi}"
 	done
-	Push -c vf '-vf' "${vfadd#,}"
+	Push vf '-vf' "${vfadd#,}"
 }
 eval "CalcVF ${vfadd}"
+
+# Create the audio filter chain depending on the arguments:
+
+Push -c afadd
+if [ -n "${resample:++}" ]
+then	if ${mplayer}
+	then	Push afadd "resample=${resample}:0:2"
+	else	Push afadd "aresample=${resample}"
+	fi
+fi
+
+CalcAF() {
+	Push -c af
+	[ ${#} -eq 0 ] && return
+	afadd=
+	for afi
+	do	afadd="${afadd},${afi}"
+	done
+	Push af '-af' "${afadd#,}"
+}
+eval "CalcAF ${afadd}"
 
 # Set the alsa sound (only called for TV input)
 
@@ -974,28 +1002,28 @@ Pass() {
 		if ${mplayer}
 		then	eval "${doexec} mencoder \${quiet} ${ofarg} \
 			\${noodml} \
-			${tvopt} -ovc ${vopt} ${vf} ${aspect} ${sopt} \
+			${tvopt} -ovc ${vopt} ${vf} ${aspect} ${sopt} ${af} \
 			${endpos} ${skips} ${skipb} ${add} \
 			-o \"\${outputtmp}\" ${input} ${addname}"
 		elif ${ffmpeg}
 		then	eval "${doexec} ffmpeg -y \${quiet} ${vopt} \
-			${tvopt} ${input}  ${aspect} ${sopt} ${vf} \
+			${tvopt} ${input}  ${aspect} ${sopt} ${af} ${vf} \
 			${endpos} ${skips} ${skipb} ${add} ${recopt} ${ofarg} \
 			-- \"\${outputtmp}\"" # \${noodml} has no substitute
 		else	eval "${doexec} avconv -y \${quiet} ${vopt} \
-			${tvopt} ${input} ${aspect} ${sopt} ${vf} \
+			${tvopt} ${input} ${aspect} ${sopt} ${af} ${vf} \
 			${endpos} ${skips} ${skipb} ${add} ${recopt} ${ofarg} \
 			-- \"\${outputtmp}\"" # \${noodml} has no substitute
 		fi
 	elif ${mplayer}
 	then	eval "${doexec} \"\${mplayercmd}\" \
-			\${quiet} ${tvopt} ${vf} ${aspect} \
+			\${quiet} ${tvopt} ${vf} ${aspect} ${af} \
 			${skips} ${skipb} ${add} ${input} ${addname}"
 	elif ${ffmpeg}
 	then	eval "${doexec} ffplay \${quiet} ${tvopt} ${input} ${vf} \
-			${aspect} ${skips} ${skipb} ${add}"
+			${aspect} ${af} ${skips} ${skipb} ${add}"
 	else	eval "${doexec} avplay \${quiet} ${tvopt} ${input} ${vf} \
-			${aspect} ${skips} ${skipb} ${add}"
+			${aspect} ${af} ${skips} ${skipb} ${add}"
 	fi
 	retvalue=${execresult}
 	return ${retvalue}
