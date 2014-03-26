@@ -134,6 +134,8 @@ Videostream:
      For compatibility with earlier versions, option -2 has the same effect"
 	else	Echo \
 "-D X Use device X  (currently: ${device:-default /dev/video0})
+-k X Use adevice X (currently: ${adevice:-default /dev/dsp})
+-O X Use immediatemode=X (currently: ${immediatemode:-default is 0 or 1})
 -i # Use input=#   (currently: ${inputnr})
 -I I Use Channel=I (currently: ${inputchannel}) (-I - for no channel selection)
 -2   Use v4l instead of v4l2
@@ -206,7 +208,7 @@ Audiostream:
 	fi
 	if ${alsa}
 	then	Echo \
-"-.   Output sound as pcm/raw
+"-.   Output sound as pcm
 -z   Do not use alsa
 -Z   Use alsa (currently chosen)"
 	else	Echo \
@@ -357,7 +359,7 @@ SetDefaults() {
 	optargs='@fpqrRm:4:8:Ggb:M:F:e:E:c:C:w:W:nN:oUA:01ulaB:Q:vzZ.T:#?'
 # Differing defaults for video/videoencode:
 	if ! ${fromfile}
-	then	optargs="${optargs}L23:i:d:k:Hh:s:S:I:V:D:"
+	then	optargs="${optargs}t:O:L23:i:d:k:Hh:s:S:I:V:D:"
 		brightness=0
 		contrast=0
 		hue=0
@@ -379,6 +381,9 @@ SetDefaults() {
 		inputchannel='-'
 		refinement=
 		device=
+		adevice=
+		immediatemode=
+		audiorate=44100
 	else	optargs="${optargs}O2kP:t:s:S:h"
 		br=800
 		lb=
@@ -434,7 +439,6 @@ do	case ${opt} in
 	'@')	mplayer=false;;
 	N)	SetPlayer "${OPTARG}";;
 	f)	force=:;;
-	k)	keep=:;;
 	p)	noexec=:;;
 	q)	quiet='-quiet';;
 	r)	refinement=${therefinement};;
@@ -483,6 +487,8 @@ do	case ${opt} in
 		CalcLamebr;;
 	Q)	lamequality=${OPTARG};;
 	'#')	sanity=false;;
+	'.')	sound='p';;
+	T)	titleopt=${titleopt}${OPTARG};;
 # Options with a different meaning for TV/File input
 	u)	if ${fromfile}
 		then	sound='c'
@@ -509,7 +515,18 @@ do	case ${opt} in
 		then	Push -c skipb '-sb' "${OPTARG}"
 		else	loudness=${OPTARG}
 		fi;;
-	T)	titleopt=${titleopt}${OPTARG};;
+	k)	if ${fromfile}
+		then	keep=:
+		else	adevice=${OPTARG}
+		fi;;
+	O)	if ${fromfile}
+		then	alwaysout=:
+		else	immediatemode=${OPTARG}
+		fi;;
+	t)	if ${fromfile}
+		then	turbolastpass=${OPTARG}
+		else	audiorate=${OPTARG}
+		fi;;
 # Special options for TV input
 	i)	inputnr=${OPTARG};;
 	I)	inputchannel=${OPTARG};;
@@ -523,9 +540,6 @@ do	case ${opt} in
 	Z)	alsa=:;;
 # Special options for File input
 	P)	totalpass=${OPTARG};;
-	t)	turbolastpass=${OPTARG};;
-	O)	alwaysout=:;;
-	'.')	sound='p';;
 # The only remaining admissible options are "help" options:
 	*)	Usage 0;;
 	esac
@@ -873,7 +887,12 @@ CalcSopt() {
 		then	tvaudio='alsa:'
 		else	tvaudio=
 		fi
-		tvaudio="${tvaudio}audiorate=44100:forcechan=${forcechan}:amode=${amode}"
+		[ -z "${adevice}" ] ||  tvaudio="${tvaudio}adevice=${adevice}:"
+		[ -z "${audiorate}" ] ||  tvaudio="${tvaudio}audiorate=${audiorate}:"
+		[ -z "${forcechan}" ] ||  tvaudio="${tvaudio}forcechan=${forcechan}:"
+		[ -z "${amode}" ] ||  tvaudio="${tvaudio}amode=${amode}:"
+		[ -z "${immediatemode}" ] || tvaudio="${tvaudio}immediatemode=${immediatemode}:"
+		tvaudio=${tvaudio%:}
 	fi
 	case ${1} in
 	l)	Push sopt '-oac' 'mp3lame' '-lameopts' \
@@ -893,7 +912,7 @@ CalcSoptFFmpeg() {
 		then	Push sopt '-f' 'alsa' '-i' 'hw:0'
 		else	Push sopt '-f' 'oss' '-i' '/dev/dsp'
 		fi
-		Push sopt '-ar' '44100'
+		[ -z "${audiorate}" ] || Push sopt '-ar' "${audiorate}"
 		Push sopt '-ac' "${forcechan}"
 	fi
 	case ${1} in

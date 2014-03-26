@@ -77,7 +77,10 @@ args+=(
 );;
 (*)
 args+=(
-'-D+[DEVICE (video device)]:path to video device:_files'
+'-D+[DEVICE (video device)]:path to video device:(/dev/video0)'
+'-k+[ADEVICE (audio device)]:path to audio device:(/dev/dsp)'
+'-O+[IMMEDIATEMODE (value)]:immediatemode:(0 1)'
+'-t+[AUDIORATE (value)]:audiorate:(44100 48000)'
 '-i+[INPUTNR (input device number)]:input device number:(0 1 2 3 4 5 6 7 8 9)'
 '-I+[CHANNEL (input channel; - for none)]:input channel:(-)'
 '-2[Use v4l instead of v4l2]'

@@ -28,6 +28,8 @@ fi
 
 if ! ${fromfile}
 then	test -r /dev/videotv && device='/dev/videotv'
+	#adevice=/dev/dsp3
+	#immediatemode=0
 	#alsa=:
 	#inputnr=2
 	#inputchannel='SE12'
@@ -36,6 +38,9 @@ then	test -r /dev/videotv && device='/dev/videotv'
 	#hqdn=''
 	#loudness=55
 	#loudnessplay=100
+	#carddimension='width=768:height=576'
+	#carddimension=
+	#cropcmd=false
 	return
 fi
 
