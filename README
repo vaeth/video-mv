@@ -23,9 +23,9 @@ I remmend to enable case-insensitive matching in zsh by putting the line
 zstyle ':completion:*' matcher-list '' 'm:{a-zA-Z}={A-Za-z}'
 into your ~/.zshrc
 
-You also need push.sh from http://github.com/vaeth/push in your path.
+You also need push.sh from https://github.com/vaeth/push in your path.
 If you want that the hard status line is set, also the title script from
-http://github.com/vaeth/runtitle (version >=2.3) is required in your path.
+https://github.com/vaeth/runtitle (version >=2.3) is required in your path.
 
 To get help run in a shell
 	video.mplayer -\?  (-h is reserved for "hue")
