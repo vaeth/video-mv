@@ -1037,12 +1037,12 @@ Pass() {
 	elif ${mplayer}
 	then	eval "${doexec} \"\${mplayercmd}\" \
 			\${quiet} ${tvopt} ${vf} ${aspect} ${af} \
-			${skips} ${skipb} ${add} ${input} ${addname}"
+			${endpos} ${skips} ${skipb} ${add} ${input} ${addname}"
 	elif ${ffmpeg}
 	then	eval "${doexec} ffplay \${quiet} ${tvopt} ${input} ${vf} \
-			${aspect} ${af} ${skips} ${skipb} ${add}"
+			${endpos} ${aspect} ${af} ${skips} ${skipb} ${add}"
 	else	eval "${doexec} avplay \${quiet} ${tvopt} ${input} ${vf} \
-			${aspect} ${af} ${skips} ${skipb} ${add}"
+			${endpos} ${aspect} ${af} ${skips} ${skipb} ${add}"
 	fi
 	retvalue=${execresult}
 	return ${retvalue}
