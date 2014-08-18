@@ -1,5 +1,5 @@
 #compdef video videoencode video.mplayer video.mplayer2 video.ffmpeg videoencode.mplayer videoencode.mplayer2 videoencode.ffmpeg
-local curcontext="$curcontext" state state_descr line
+local curcontext="$curcontext" state state_descr line expl
 typeset -A opt_args
 local args mplayer players prog defpass
 mplayer=:
@@ -70,7 +70,7 @@ args+=(
 '-u[unencoded sound]'
 '-l[lame CBR sound (default)]'
 '-S+[PERCENT (Use PERCENT loudness for sound capturing)]:loudness percentage:(90 100)'
-'1:Passes:(- "1-$defpass")'
+'1:Passes:->passes'
 '2:Input file:_files'
 '3:Output file:_files'
 "*:$prog options:"
@@ -190,6 +190,16 @@ case $state in
 	_alternative \
 	'Output file:Output file:_files' \
 	'live display:live display:(-)'
+	ret=$?;;
+(passes)
+	local pass=${opt_args[-P]}
+	[[ -n $pass ]] || pass=$defpass
+	if [[ $pass -le 1 ]]
+	then	pass=1
+	else	pass="1-$pass"
+	fi
+	_description jobrange expl 'passes'
+	compadd "$expl[@]" - - $pass
 	ret=$?;;
 esac
 return ret
