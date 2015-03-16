@@ -15,6 +15,7 @@ rump=
 fromfile=false
 mplayer=:
 mplayercmd='mplayer'
+mpv=false
 case ${name} in
 *encod*|*file*|*conv*)
 	fromfile=:;;
@@ -22,8 +23,9 @@ esac
 case ${name} in
 *ff*|*av*)
 	mplayer=false;;
-*2*)
-	mplayercmd='mplayer2';;
+*pv*)
+	mpv=:
+	mplayercmd='mpv';;
 esac
 
 UsageFFmpeg() {
@@ -146,7 +148,7 @@ Videostream:
 	fi
 	if ${mplayer}
 	then	Echo \
-"-N X (X is mplayer or mplayer2); default depends on name of the script.
+"-N X (X is mplayer or mpv); default depends on name of the script.
      Currrently: ${mplayercmd}
 -M X set mbd (see mencoder manpage) currently ${mbd} (0: fast, 2: high quality)
 -r Use refinement options (higher quality, slowdown): ${therefinement}
@@ -416,9 +418,11 @@ SetStartEnd() {
 
 SetPlayer() {
 	case ${1} in
-	*2*)
-		mplayercmd='mplayer2';;
+	*pv*)
+		mpv=:
+		mplayercmd='mpv';;
 	*)
+		mpv=false
 		mplayercmd='mplayer';;
 	esac
 }
@@ -750,13 +754,19 @@ do	if ${collectopt}
 done
 
 if [ -n "${skips}" ]
-then	Push -c skips '-ss' "${skips}"
+then	if ${mpv}
+	then	Push -c skips '--start' "${skips}"
+	else	Push -c skips '-ss' "${skips}"
+	fi
 else	Push -c skips
 fi
 
 if [ -n "${endpos}" ]
 then	if ${mplayer}
-	then	Push -c endpos '-endpos' "${endpos}"
+	then	if ${mpv}
+		then	Push -c endpos '--length' "${endpos}"
+		else	Push -c endpos '-endpos' "${endpos}"
+		fi
 	else	Push -c endpos '-to' "${endpos}"
 	fi
 else	Push -c endpos
@@ -779,6 +789,8 @@ then	if [ -z "${aspectw:++}" ]
 	fi
 	if ${record}
 	then	Push -c aspect '-force-avi-aspect'
+	elif ${mpv}
+	then	Push -c aspect '--video-aspect'
 	else	Push -c aspect '-aspect'
 	fi
 	Push aspect "${aspectw}:${aspecth}"
@@ -794,7 +806,8 @@ fi
 
 # Create the video filter chain depending on the arguments:
 
-if [ -n "${hqdn:++}" ] || [ -n "${lb:++}" ] || [ -n "${vfadd:++}" ] && ! ${ffmpeg}
+if [ -n "${hqdn:++}" ] || [ -n "${lb:++}" ] || [ -n "${vfadd:++}" ] \
+	&& ! ${ffmpeg} && ! ${mpv}
 then	Push vfadd 'softskip'
 fi
 if ${record}
@@ -866,6 +879,21 @@ Setsound() {
 	${record} || SetMixerTrap
 }
 
+SanitizeImmediatemode() {
+	case ${immediatemode} in
+	*[0nNfF]*)
+		if ${mpv}
+		then	immediatemode=no
+		else	immediatemode=0
+		fi
+		return;;
+	esac
+	if ${mpv}
+	then	immediatemode=yes
+	else	immediatemode=1
+	fi
+}
+
 # Pass is the main function calling mencoder/mplayer.
 # Its first argument is pass (the special value v means TV input)
 # If its second argument is "-e" then mencoder/mplayer is called with "exec".
@@ -879,7 +907,10 @@ CalcSopt() {
 	fi
 	if [ -z "${sound:++}" ]
 	then	tvaudio='noaudio'
-		Push sopt '-nosound'
+		if ${mpv}
+		then	Push sopt '--no-audio'
+		else	Push sopt '-nosound'
+		fi
 		return
 	fi
 	if ${2}
@@ -891,7 +922,10 @@ CalcSopt() {
 		[ -z "${audiorate}" ] ||  tvaudio="${tvaudio}audiorate=${audiorate}:"
 		[ -z "${forcechan}" ] ||  tvaudio="${tvaudio}forcechan=${forcechan}:"
 		[ -z "${amode}" ] ||  tvaudio="${tvaudio}amode=${amode}:"
-		[ -z "${immediatemode}" ] || tvaudio="${tvaudio}immediatemode=${immediatemode}:"
+		[ -z "${immediatemode}" ] || {
+			SanitizeImmediatemode
+			tvaudio="${tvaudio}immediatemode=${immediatemode}:"
+		}
 		tvaudio=${tvaudio%:}
 	fi
 	case ${1} in

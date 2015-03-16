@@ -1,17 +1,17 @@
-#compdef video videoencode video.mplayer video.mplayer2 video.ffmpeg videoencode.mplayer videoencode.mplayer2 videoencode.ffmpeg
+#compdef video videoencode video.mplayer video.mpv video.ffmpeg videoencode.mplayer videoencode.mpv videoencode.ffmpeg
 local curcontext="$curcontext" state state_descr line expl
 typeset -A opt_args
 local args mplayer players prog defpass
 mplayer=:
 defpass=4
 prog=mplayer
-players='mplayer2'
+players='mpv'
 case $service in
 (*ff*|*av*)
 	prog=ffmpeg
 	defpass=2
 	mplayer=false;;
-(*2*)
+(*pv*)
 	players='mplayer';;
 esac
 args=(
