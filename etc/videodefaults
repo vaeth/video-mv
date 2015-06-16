@@ -8,7 +8,7 @@
 
 # Now only dvb-t:
 
-if ${dvb}
+if $dvb
 then	# channels=~/.tzap/channels.conf
 	# channels=/etc/channels.conf
 	# pass=r
@@ -26,7 +26,7 @@ fi
 
 # Now only video
 
-if ! ${fromfile}
+if ! $fromfile
 then	test -r /dev/videotv && device='/dev/videotv'
 	#adevice=/dev/dsp3
 	#immediatemode=0

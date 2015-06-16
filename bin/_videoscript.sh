@@ -6,43 +6,43 @@
 set -f
 
 Echo() {
-	printf '%s\n' "${*}"
+	printf '%s\n' "$*"
 }
 
 Verbose() {
-	Echo "# ${*}"
+	Echo "# $*"
 }
 
 Message() {
-	Echo "${0##*/}: ${*}" >&2
+	Echo "${0##*/}: $*" >&2
 }
 
 Warning() {
-	Message "warning: ${*}"
+	Message "warning: $*"
 }
 
 Exit() {
-	trapret=${1:-${?}}
-	exit ${trapret}
+	trapret=${1:-$?}
+	exit $trapret
 }
 
 Fatal() {
-	Message "error: ${*}"
+	Message "error: $*"
 	Exit 1
 }
 
 Push() {
 	. push.sh
-	Push "${@}"
+	Push "$@"
 }
 
 MyExec() {
-	if ${verbose} || ${showonly}
-	then	Push -c myexec "${@}"
-		Echo "${myexec}"
-		! ${showonly} || return 0
+	if $verbose || $showonly
+	then	Push -c myexec "$@"
+		Echo "$myexec"
+		! $showonly || return 0
 	fi
-	"${@}"
+	"$@"
 }
 
 SourceDefaults() {
@@ -55,7 +55,7 @@ SourceDefaults() {
 Calc_cs_sec() {
 	cs_arg=${1%%:*}
 	while :
-	do	case ${cs_arg} in
+	do	case $cs_arg in
 		0*)
 			cs_arg=${cs_arg#0}
 			continue;;
@@ -63,30 +63,30 @@ Calc_cs_sec() {
 		break
 	done
 	if [ "${cs_arg:-0}" -ne 0 ]
-	then	[ ${#} -eq 1 ] || cs_arg=$(( ${cs_arg} * ${2} ))
-		cs_sec=$(( ${cs_sec} + ${cs_arg} ))
+	then	[ $# -eq 1 ] || cs_arg=$(( $cs_arg * $2 ))
+		cs_sec=$(( $cs_sec + $cs_arg ))
 	fi
 	unset cs_arg
 }
 
 CalcSeconds() {
 	cs_sec=${2:-0}
-	case ${2} in
+	case $2 in
 	*:*)
 		cs_sec=0
-		cs_cur=${2}':'
-		Calc_cs_sec "${cs_cur}" 3600
+		cs_cur=$2':'
+		Calc_cs_sec "$cs_cur" 3600
 		cs_cur=${cs_cur#*:}
-		Calc_cs_sec "${cs_cur}" 60
+		Calc_cs_sec "$cs_cur" 60
 		cs_cur=${cs_cur#*:}
-		Calc_cs_sec "${cs_cur}"
+		Calc_cs_sec "$cs_cur"
 	esac
-	eval ${1}=\${cs_sec}
+	eval $1=\$cs_sec
 	unset cs_cur cs_sec
 }
 
 TitleOpt() {
-	case ${titleopt} in
+	case $titleopt in
 	*[!pPfHsS-]*)
 		Usage;;
 	esac
@@ -96,7 +96,7 @@ Title() {
 Title() {
 :
 }
-	case ${titleopt} in
+	case $titleopt in
 	*-*)	return;;
 	esac
 	command -v title >/dev/null 2>&1 || return 0
@@ -108,13 +108,13 @@ TitleTrap() {
 	trap : EXIT HUP INT TERM
 	TitleVerbose
 	trap - EXIT HUP INT TERM
-	exit ${trapret}
+	exit $trapret
 }
 	trap TitleTrap EXIT HUP INT TERM
 TitleInit() {
-. title "${@}"
+. title "$@"
 }
-	TitleInit ${titleopt:+"-${titleopt}"} -- "${@}"
+	TitleInit ${titleopt:+"-$titleopt"} -- "$@"
 }
 
 titleopt=

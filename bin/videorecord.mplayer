@@ -12,7 +12,7 @@ esac
 
 Usage() {
 	Echo \
-"Usage: ${0##*/} [options] [DIR/]basename TIME LEN [video.${modus} options]
+"Usage: ${0##*/} [options] [DIR/]basename TIME LEN [video.$modus options]
 Records video DIR/basename.avi at the given time and duration.
 
 TIME must be understood by the 'date' utility. Examples:
@@ -34,7 +34,7 @@ The following options are available:
   -q        Be quiet
   -V        Be not very verbose
   -p -n -s  Output only command(s) but do not execute something
-  -x PROG   Use PROG instead of video.${modus}
+  -x PROG   Use PROG instead of video.$modus
   -T[pPfHsS-] pass option(s) to the title script; - means no title"
 	exit ${1:-1}
 }
@@ -45,53 +45,53 @@ verbose=:
 quiet=
 titleopt=
 showonly=false
-prog="video.${modus}"
+prog=video.$modus
 
 # Parse options
 
 while getopts 'pnsqVx:T:h?' opt
-do	case ${opt} in
+do	case $opt in
 	[pns])	showonly=:;;
 	q)	quiet='-q';;
-	x)	prog=${OPTARG};;
+	x)	prog=$OPTARG;;
 	V)	verbose=false;;
-	T)	titleopt=${titleopt}${OPTARG};;
+	T)	titleopt=$titleopt$OPTARG;;
 	*)	Usage 0;;
 	esac
 done
-shift $(( ${OPTIND} -1 ))
-[ ${#} -ge 1 ] || Usage
+shift $(( $OPTIND -1 ))
+[ $# -ge 1 ] || Usage
 
 # Interpret parameters
 
-case ${titleopt} in
+case $titleopt in
 *[!pPfHsS-]*)
 	Usage;;
 esac
 
 base=${1##*/}
 srcdir=${1%/*}
-[ "${srcdir}" = "${1}" ] && srcdir=${PWD}
-[ -n "${srcdir}" ] && test -d "${srcdir}" || Usage
+[ "$srcdir" = "$1" ] && srcdir=$PWD
+[ -n "$srcdir" ] && test -d "$srcdir" || Usage
 shift
 
-time=${1}
-[ ${#} -ge 1 ] || Usage
+time=$1
+[ $# -ge 1 ] || Usage
 shift
-len=${1}
-case ${len} in
+len=$1
+case $len in
 0|-)
 	len=
 	shift;;
 -*)
 	:;;
 *)
-	[ ${#} -ge 1 ] && shift;;
+	[ $# -ge 1 ] && shift;;
 esac
 
 MyCd() {
-	${verbose} && Echo "cd ${1}"
-	cd "${1}" >/dev/null 2>&1 || Fatal "cannot cd to ${1}"
+	$verbose && Echo "cd $1"
+	cd "$1" >/dev/null 2>&1 || Fatal "cannot cd to $1"
 }
 
 EarlyReturn() {
@@ -102,18 +102,18 @@ EarlyReturn() {
 # main function
 
 DoRecord() {
-	MyCd "${srcdir}"
-	if [ -n "${time}" ]
-	then	MyExec sleepto ${quiet} ${titleopt:+"-T${titleopt}"} "${time}" \
+	MyCd "$srcdir"
+	if [ -n "$time" ]
+	then	MyExec sleepto $quiet ${titleopt:+"-T$titleopt"} "$time" \
 			|| EarlyReturn
-		${verbose} && MyExec date
-		MyExec "${prog}" ${quiet} ${len:+-e} ${len} \
-			${titleopt:+"-T${titleopt}"} "${@}" "${base}.avi"
-		rstat=${?}
+		$verbose && MyExec date
+		MyExec "$prog" $quiet ${len:+-e} $len \
+			${titleopt:+"-T$titleopt"} "$@" "$base.avi"
+		rstat=$?
 	fi
 }
 
-${verbose} && MyExec date
-DoRecord "${@}"
-${verbose} && MyExec date
-Exit ${rstat}
+$verbose && MyExec date
+DoRecord "$@"
+$verbose && MyExec date
+Exit $rstat

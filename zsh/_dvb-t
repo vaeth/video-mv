@@ -28,7 +28,7 @@ case $state in
 		fi
 	} >/dev/null 2>&1 && printf '%s' "${channels}x") || chf=
 	chf=${chf%x}
-	: ${chf:=${HOME}/.tzap/channels.conf}
+	: ${chf:=$HOME/.tzap/channels.conf}
 	if [[ -r $chf ]] || {
 		chf='/etc/channels.conf'
 		[[ -r $chf ]]

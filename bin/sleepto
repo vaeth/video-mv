@@ -20,37 +20,37 @@ titleopt=
 quiet=false
 OPTIND=1
 while getopts "T:qh?" opt
-do	case ${opt} in
-	T)	titleopt=${titleopt}${OPTARG};;
+do	case $opt in
+	T)	titleopt=$titleopt$OPTARG;;
 	q)	quiet=:;;
 	*)	Usage 0;;
 	esac
 done
-shift $(( ${OPTIND} - 1 ))
-[ ${#} -gt 0 ] || Usage
+shift $(( $OPTIND - 1 ))
+[ $# -gt 0 ] || Usage
 
 TitleOpt
 
 curr=`date '+%s'` && [ -n "${curr:++}" ] || \
 	Fatal 'cannot determine current date'
-diff=`date -d "${*}" '+%s'` && [ -n "${diff:++}" ] || \
+diff=`date -d "$*" '+%s'` && [ -n "${diff:++}" ] || \
 	Fatal 'cannot determine destination date'
-[ "${diff}" -gt "${curr}" ] && diff=$(( ${diff} - ${curr} )) || diff=
+[ "$diff" -gt "$curr" ] && diff=$(( $diff - $curr )) || diff=
 if [ -z "${diff:++}" ]
 then	Echo 'not sleeping'
 	Exit 0
 fi
-if ! ${quiet}
-then	if text=`date -d "${*}"` && [ -n "${text:++}" ]
-	then	Echo "sleeping until ${text}"
-		Title "zzz... ${text}"
-	else	Echo "sleeping ${diff} seconds"
-		Title "zzz... ${diff} sec"
+if ! $quiet
+then	if text=`date -d "$*"` && [ -n "${text:++}" ]
+	then	Echo "sleeping until $text"
+		Title "zzz... $text"
+	else	Echo "sleeping $diff seconds"
+		Title "zzz... $diff sec"
 	fi
 fi
-if [ -n "${trapret}" ]
-then	sleep "${diff}"
+if [ -n "$trapret" ]
+then	sleep "$diff"
 	Exit
-else	exec sleep "${diff}"
-	Fatal 'failed to exec sleep ${diff}'
+else	exec sleep "$diff"
+	Fatal 'failed to exec sleep $diff'
 fi

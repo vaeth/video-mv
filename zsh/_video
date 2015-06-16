@@ -45,9 +45,9 @@ args=(
 '-Q+[lame quality]:lame quality:(0)'
 '*-T+[OPT (set title option)]:title option:_title_opt'
 )
-if ${mplayer}
+if $mplayer
 then	args+=(
-"-N+[PLAYER (set player)]:player:(${players})"
+"-N+[PLAYER (set player)]:player:($players)"
 '-M+[MBD (Set mbd value)]:mbd value:->mbd'
 '-r[Use refinement options (slow)]'
 '-R[Remove refinement options (fast)]'
@@ -196,7 +196,7 @@ case $state in
 	[[ -n $pass ]] || pass=$defpass
 	if [[ $pass -le 1 ]]
 	then	pass=1
-	else	pass="1-$pass"
+	else	pass=1-$pass
 	fi
 	_description jobrange expl 'passes'
 	compadd "$expl[@]" - - $pass

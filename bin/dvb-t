@@ -4,15 +4,15 @@
 . _videoscript.sh
 
 CalcChannels() {
-	calcchannels=${channels:-${HOME}/.tzap/channels.conf}
-	test -r "${calcchannels}" || {
+	calcchannels=${channels:-$HOME/.tzap/channels.conf}
+	test -r "$calcchannels" || {
 		channels='/etc/channels.conf'
-		test -r "${channels}" && calcchannels=${channels}
+		test -r "$channels" && calcchannels=$channels
 	}
 }
 
 Usage() {
-	CalcChannels || calcchannels="nonreadable ${calcchannels}"
+	CalcChannels || calcchannels="nonreadable $calcchannels"
 	Echo "Usage: ${0##*/} [options] channel [FILE]
 If no FILE is given, a random name is chosen; use - to select standard output.
 Options:
@@ -22,7 +22,7 @@ Options:
 -t STOP Stop after given timeout.  STOP is [[hh:]mm:]ss
 -e STOP as -t STOP
 -s TIME Start at TIME
--c FILE Use FILE (currently: ${calcchannels}).
+-c FILE Use FILE (currently: $calcchannels).
         Fallbacks are ~./tzap/channels.conf or /etc/channels.conf
 -a NUM  Use adaptor NUM
 -F NUM  Use frontend NUM
@@ -34,9 +34,9 @@ Options:
 }
 
 Check() {
-	${force} || [ -z "${file:++}" ] && return
-	if [ "${file}" != '-' ] && test -r "${file}"
-	then	Fatal "${file} exists.  Use -f to override"
+	$force || [ -z "${file:++}" ] && return
+	if [ "$file" != '-' ] && test -r "$file"
+	then	Fatal "$file exists.  Use -f to override"
 	fi
 }
 
@@ -62,84 +62,84 @@ SetDefaults() {
 
 SetDefaults
 while getopts 'nqrpfc:a:F:d:e:t:s:T:h?' opt
-do	case ${opt} in
+do	case $opt in
 	n)	showonly=:;;
 	q)	verbose=false;;
 	r)	pass=r;;
 	p)	pass=p;;
 	f)	force=:;;
-	c)	channels=${OPTARG};;
-	F)	frontend=${OPTARG};;
-	a)	adapter=${OPTARG};;
-	d)	demux=${OPTARG};;
-	[te])	stop=${OPTARG};;
-	s)	start=${OPTARG};;
-	T)	titleopt=${titleopt}${OPTARG};;
+	c)	channels=$OPTARG;;
+	F)	frontend=$OPTARG;;
+	a)	adapter=$OPTARG;;
+	d)	demux=$OPTARG;;
+	[te])	stop=$OPTARG;;
+	s)	start=$OPTARG;;
+	T)	titleopt=$titleopt$OPTARG;;
 	*)	Usage 0;;
 	esac
 done
-shift $(( ${OPTIND} -1 ))
-[ ${#} -ge 1 ] && [ ${#} -le 2 ] || Usage
+shift $(( $OPTIND -1 ))
+[ $# -ge 1 ] && [ $# -le 2 ] || Usage
 
 # Interpret parameters
 
 TitleOpt
 
-case ${stop} in
+case $stop in
 *[!:0-9]*)
 	Usage;;
 esac
 
-CalcChannels || Fatal "cannot read channels file ${calcchannels}"
+CalcChannels || Fatal "cannot read channels file $calcchannels"
 
 fileout=:
 random=false
 file=
-if [ -z "${pass}" ]
+if [ -z "$pass" ]
 then	pass=o
-	if [ ${#} -lt 2 ] || [ -z "${2}" ]
+	if [ $# -lt 2 ] || [ -z "$2" ]
 	then	random=:
-	else	file=${2}
+	else	file=$2
 		Check
-		[ "${file}" != '-' ] || fileout=false
+		[ "$file" != '-' ] || fileout=false
 	fi
 fi
 
-${fileout} || verbose=false
+$fileout || verbose=false
 
 if [ -n "${stop:++}" ]
-then	CalcSeconds stop "${stop}"
+then	CalcSeconds stop "$stop"
 fi
 
 if [ -n "${start:++}" ]
-then	MyExec sleepto ${titleopt:+"-T${titleopt}"} "${start}" || Exit
+then	MyExec sleepto ${titleopt:+"-T$titleopt"} "$start" || Exit
 fi
 
-if ${random}
-then	file=`mktemp /tmp/${0##*/}.${$}XXXXXXXX` && test -r "${file}" || \
+if $random
+then	file=`mktemp /tmp/${0##*/}.$$XXXXXXXX` && test -r "$file" || \
 		Fatal 'mktemp failed'
 else	Check
 fi
 
-if [ -n "${file}" ]
-then	text=${file}
-else	text="/dev/dvb/adapter${adapter:-0}/dvr0"
+if [ -n "$file" ]
+then	text=$file
+else	text=/dev/dvb/adapter${adapter:-0}/dvr0
 fi
 
-if ${fileout}
+if $fileout
 then	Echo "
-${0##*/}: ${1} -> ${text}
+${0##*/}: $1 -> $text
 "
-	Title "${1}->${text}"
+	Title "$1->$text"
 fi
 
-Push -c args "-${pass}"
-[ -z "${file}" ] || Push args "${file}"
-[ -z "${stop}" ] || Push args '-t' "${stop}"
-[ -z "${channels}" ] || Push args '-c' "${channels}"
-[ -z "${adapter}" ]  || Push args '-a' "${adapter}"
-[ -z "${frontend}" ] || Push args '-f' "${frontend}"
-[ -z "${demux}" ] || Push args '-d' "${demux}"
+Push -c args "-$pass"
+[ -z "$file" ] || Push args "$file"
+[ -z "$stop" ] || Push args '-t' "$stop"
+[ -z "$channels" ] || Push args '-c' "$channels"
+[ -z "$adapter" ]  || Push args '-a' "$adapter"
+[ -z "$frontend" ] || Push args '-f' "$frontend"
+[ -z "$demux" ] || Push args '-d' "$demux"
 
-eval MyExec tzap ${args} -- "\${1}"
+eval MyExec tzap $args -- "\$1"
 Exit
