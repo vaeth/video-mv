@@ -1,6 +1,6 @@
 #!/usr/bin/env sh
 # (C) Martin V\"ath <martin@mvath.de>
-
+set -u
 . _videoscript.sh
 
 name=${0##*/}
@@ -794,6 +794,7 @@ then	if [ -z "${aspectw:++}" ]
 	else	Push -c aspect '-aspect'
 	fi
 	Push aspect "$aspectw:$aspecth"
+else	Push -c aspect
 fi
 
 # cropcmd is currently either false or : (depending on whether cropping is required).
@@ -1044,7 +1045,7 @@ Pass() {
 	Echoexec date
 	[ "$currvpass" -eq 3 ] && Echoexec cp -a -- "$morepass" "$morepassed"
 	doexec=Echoexec
-	[ "$2" = 'noexec' ] || doexec='Echoexec exec'
+	[ "${2-}" = 'noexec' ] || doexec='Echoexec exec'
 	Push -c ofarg
 	[ -z "$oftype" ] || if $mplayer
 	then	Push -c ofarg '-of' "$oftype"

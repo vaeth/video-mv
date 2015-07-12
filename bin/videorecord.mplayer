@@ -1,6 +1,6 @@
 #!/usr/bin/env sh
 # (C) Martin V\"ath <martin@mvath.de>
-
+set -u
 . _videoscript.sh
 
 case ${0##*/} in
@@ -75,10 +75,10 @@ srcdir=${1%/*}
 [ -n "$srcdir" ] && test -d "$srcdir" || Usage
 shift
 
-time=$1
 [ $# -ge 1 ] || Usage
+time=$1
 shift
-len=$1
+len=${1-}
 case $len in
 0|-)
 	len=
