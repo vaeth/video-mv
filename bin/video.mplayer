@@ -206,7 +206,7 @@ Audiostream:
 	else	Echo \
 "-u   Copy sound unencoded whatever it was
 -l   Use Lame-cbr for sound (default)
--S x Use x% loudness for sound capturing (current: $loudness)"
+-S x Use x% loudness for sound capturing (current: ${loudness-})"
 	fi
 	if $alsa
 	then	Echo \
@@ -914,7 +914,7 @@ CalcSopt() {
 		fi
 		return
 	fi
-	if $2
+	if ${2:-false}
 	then	if $alsa
 		then	tvaudio='alsa:'
 		else	tvaudio=
@@ -942,7 +942,7 @@ CalcSoptFFmpeg() {
 	then	Push sopt '-an'
 		return
 	fi
-	if [ -n "$2" ]
+	if ${2:-false}
 	then	if $alsa
 		then	Push sopt '-f' 'alsa' '-i' 'hw:0'
 		else	Push sopt '-f' 'oss' '-i' '/dev/dsp'
