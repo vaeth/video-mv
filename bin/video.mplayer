@@ -1061,11 +1061,11 @@ Pass() {
 			$endpos $skips $skipb $add \
 			-o \"\$outputtmp\" $input $addname"
 		elif $ffmpeg
-		then	eval "$doexec ffmpeg -y \$quiet $vopt \
+		then	eval "$doexec ffmpeg -y \$quiet \
 			$tvopt $input  $aspect $sopt $af $vf \
 			$endpos $skips $skipb $add $recopt $ofarg \
 			-- \"\$outputtmp\"" # \$noodml has no substitute
-		else	eval "$doexec avconv -y \$quiet $vopt \
+		else	eval "$doexec avconv -y \$quiet \
 			$tvopt $input $aspect $sopt $af $vf \
 			$endpos $skips $skipb $add $recopt $ofarg \
 			-- \"\$outputtmp\"" # \$noodml has no substitute
