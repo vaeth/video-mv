@@ -132,7 +132,7 @@ Videostream:
 	then	Echo \
 "-t X Use turbomode until (including) pass X in multipassmode
      (The default X=0 means: never use turbomode).
--k   Keep temporary files even after the last pass.
+-k   Keep temporary files even after the last pass or in case of error.
      For compatibility with earlier versions, option -2 has the same effect"
 	else	Echo \
 "-D X Use device X  (currently: ${device:-default /dev/video0})
@@ -618,7 +618,8 @@ Echoexec() {
 Clean() {
 	cleanarg=$1
 	case $cleanarg in
-	s)	$mplayer || return 0
+	s)
+		$mplayer || return 0
 		set +f
 		set -- "$soundmagic" analyse.log c*':'*trace*.txt
 		set -f
@@ -631,9 +632,10 @@ Clean() {
 				Fatal "$cleani exists. This is obsoleted and may cause troubles."
 		done
 		return 0;;
-	t)	cleani=false;;
-	f)	cleani=false;;
-	l)	cleani=$keep;;
+	t|f)
+		cleani=false;;
+	l)
+		cleani=$keep;;
 	esac
 	! $cleani || return 0
 	if ! $mplayer
@@ -1111,7 +1113,10 @@ If you really meant what you typed, use in addition option -!"
 				Verbose "Pass $currpass|$2 of $totalpass"
 			fi
 		fi
-		Pass "$currpass" noexec || return $retvalue
+		Pass "$currpass" noexec || {
+			Clean l
+			return $retvalue
+		}
 		currpass=$(( $currpass + 1 ))
 	done
 	[ "$totalpass" -gt 0 ] && [ "$2" -lt "$totalpass" ] && return 0
