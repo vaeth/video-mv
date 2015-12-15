@@ -50,7 +50,7 @@ Usage() {
 	fi
 	if ! $fromfile
 	then	Echo \
-"Usage: $name [options] FILE [additional $userboth-options]
+"Usage: $name [options] FILE [additional $useboth-options]
 Records TV to FILE, using $usemencoder and setting alsa-mixer.
 If FILE is '-', then the video is displayed ($usemplayer), not recorded.
 If FILE is '+', then stdout is used.
