@@ -3,17 +3,32 @@
 set -u
 . _videoscript.sh
 
+case ${0##*/} in
+*t)
+	letter=t
+	dvbt=:
+	dvbc=false;;
+*)
+	letter=c
+	dvbt=false
+	dvbc=:;;
+esac
+
 CalcChannels() {
-	calcchannels=${channels:-$HOME/.tzap/channels.conf}
-	test -r "$calcchannels" || {
-		channels='/etc/channels.conf'
-		test -r "$channels" && calcchannels=$channels
-	}
+	for calcchannelsi in "${channels-}" \
+		"$HOME/.${letter}zap/channels.conf" \
+		/etc/channels-${letter}zap.conf \
+		/etc/channels.conf
+	do	test -z "$calcchannelsi" && continue
+		channels=$calcchannelsi
+		test -r "$channels" && calccannels=$channels && return
+	done
 }
 
 Usage() {
 	CalcChannels || calcchannels="nonreadable $calcchannels"
-	Echo "Usage: ${0##*/} [options] channel [FILE]
+	if $dvbt
+	then	Echo "Usage: ${0##*/} [options] channel [FILE]
 If no FILE is given, a random name is chosen; use - to select standard output.
 Options:
 -f      If FILE exists override it
@@ -22,13 +37,20 @@ Options:
 -t STOP Stop after given timeout.  STOP is [[hh:]mm:]ss
 -e STOP as -t STOP
 -s TIME Start at TIME
--c FILE Use FILE (currently: $calcchannels).
-        Fallbacks are ~./tzap/channels.conf or /etc/channels.conf
+-q      Quiet"
+	else	Echo "Usage: ${0##*/} [options] channel
+Sets up /dev/dvb/adapterX/dvr0 for TS recording.
+Options:
+-r      Set up /dev/dvb/adapterX/dvr0 for TS recording
+-p      add pat and pmt to TS recording (implies -r)"
+	fi
+	Echo \
+"-c FILE Use FILE (currently: $calcchannels). Fallbacks are:
+         ~/.${letter}zap/channels.conf /etc/channels-${letter}zap.conf /etc/channels.conf
 -a NUM  Use adaptor NUM
 -F NUM  Use frontend NUM
 -d NUM  Use demux NUM
 -n      Output only command but do not execute something
--q      Quiet
 -T[pPfHsS-] pass option(s) to the title script; - means no title"
 	exit ${1:-1}
 }
@@ -55,13 +77,15 @@ SetDefaults() {
 	verbose=:
 	showonly=false
 	dvb=:
+	options='nrpfc:a:F:d:T:h?'
+	$dvbc || options='qe:t:s'$options
 	SourceDefaults
 }
 
 # Parse options
 
 SetDefaults
-while getopts 'nqrpfc:a:F:d:e:t:s:T:h?' opt
+while getopts $options opt
 do	case $opt in
 	n)	showonly=:;;
 	q)	verbose=false;;
@@ -79,7 +103,11 @@ do	case $opt in
 	esac
 done
 shift $(( $OPTIND -1 ))
-[ $# -ge 1 ] && [ $# -le 2 ] || Usage
+[ $# -ge 1 ] || Usage
+if $dvbt
+then	[ $# -le 2 ] || Usage
+else	[ $# -le 1 ] || Usage
+fi
 
 # Interpret parameters
 
@@ -95,7 +123,7 @@ CalcChannels || Fatal "cannot read channels file $calcchannels"
 fileout=:
 random=false
 file=
-if [ -z "$pass" ]
+if $dvbt && [ -z "$pass" ]
 then	pass=o
 	if [ $# -lt 2 ] || [ -z "$2" ]
 	then	random=:
@@ -128,12 +156,14 @@ fi
 
 if $fileout
 then	Echo "
-${0##*/}: $1 -> $text
-"
+${0##*/}: $1 -> $text"
+	$dvbt || Echo "videoencode.ffmpeg -u c $text filename"
+	Echo
 	Title "$1->$text"
 fi
 
-Push -c args "-$pass"
+Push -c args
+[ -z "$pass" ] || Push args "-$pass"
 [ -z "$file" ] || Push args "$file"
 [ -z "$stop" ] || Push args '-t' "$stop"
 [ -z "$channels" ] || Push args '-c' "$channels"
@@ -141,5 +171,5 @@ Push -c args "-$pass"
 [ -z "$frontend" ] || Push args '-f' "$frontend"
 [ -z "$demux" ] || Push args '-d' "$demux"
 
-eval MyExec tzap $args -- "\$1"
+eval MyExec ${letter}zap $args -- "\$1"
 Exit

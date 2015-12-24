@@ -400,6 +400,8 @@ SetDefaults() {
 		refinement=$therefinement
 	fi
 	dvb=false
+	dvbt=false
+	dvbc=false
 	SourceDefaults
 	CalcLamebr
 }

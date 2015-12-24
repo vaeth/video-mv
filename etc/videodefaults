@@ -1,16 +1,20 @@
 #!/usr/bin/env sh
-# This file is sourced by video/videoencode/dvb-t to set some defaults.
+# This file is sourced by video/videoencode/dvb-t/dvb-c to set some defaults.
 
 # The first part is to set some defaults common for dvb-t and video{,encode}.
 # Look at the function SetDefaults in the scripts to see what can be set here.
 
 # titleopt=
 
-# Now only dvb-t:
+# Now only dvb-t and dvb-c
 
+# $dvb is a shortcut for $dvbt || $dvbc
 if $dvb
-then	# channels=~/.tzap/channels.conf
-	# channels=/etc/channels.conf
+then	# if $dvbt
+	# then	channels=~/.tzap/channels.conf
+	# elif $dvbc
+	# then	channels=~/.czap/channels.conf
+	# fi
 	# pass=r
 	# adapter=1
 	# frontend=1
