@@ -32,20 +32,18 @@ Usage() {
 If no FILE is given, a random name is chosen; use - to select standard output.
 Options:
 -f      If FILE exists override it
--r      Set up /dev/dvb/adapterX/dvr0 for TS recording (FILE is ignored)
+-q      Quiet"
+	else	Echo "Usage: ${0##*/} [options] channel
+Sets up /dev/dvb/adapterX/dvr0 for TS recording.
+Options:"
+	fi
+	Echo \
+"-r      Set up /dev/dvb/adapterX/dvr0 for TS recording (FILE is ignored)
 -p      add pat and pmt to TS recording (implies -r)
 -t STOP Stop after given timeout.  STOP is [[hh:]mm:]ss
 -e STOP as -t STOP
 -s TIME Start at TIME
--q      Quiet"
-	else	Echo "Usage: ${0##*/} [options] channel
-Sets up /dev/dvb/adapterX/dvr0 for TS recording.
-Options:
--r      Set up /dev/dvb/adapterX/dvr0 for TS recording
--p      add pat and pmt to TS recording (implies -r)"
-	fi
-	Echo \
-"-c FILE Use FILE (currently: $calcchannels). Fallbacks are:
+-c FILE Use FILE (currently: $calcchannels). Fallbacks are:
          ~/.${letter}zap/channels.conf /etc/channels-${letter}zap.conf /etc/channels.conf
 -a NUM  Use adaptor NUM
 -F NUM  Use frontend NUM
@@ -77,8 +75,8 @@ SetDefaults() {
 	verbose=:
 	showonly=false
 	dvb=:
-	options='nrpfc:a:F:d:T:h?'
-	$dvbc || options='qe:t:s'$options
+	options='nrpe:t:s:c:a:F:d:T:h?'
+	$dvbc || options='qf'$options
 	SourceDefaults
 }
 
@@ -165,11 +163,33 @@ fi
 Push -c args
 [ -z "$pass" ] || Push args "-$pass"
 [ -z "$file" ] || Push args "$file"
-[ -z "$stop" ] || Push args '-t' "$stop"
+if $dvbt
+then	[ -z "$stop" ] || Push args '-t' "$stop"
+fi
 [ -z "$channels" ] || Push args '-c' "$channels"
 [ -z "$adapter" ]  || Push args '-a' "$adapter"
 [ -z "$frontend" ] || Push args '-f' "$frontend"
 [ -z "$demux" ] || Push args '-d' "$demux"
 
-eval MyExec ${letter}zap $args -- "\$1"
-Exit
+if $dvbt || [ -z "$stop" ]
+then	eval MyExec ${letter}zap $args -- "\$1"
+	Exit
+fi
+eval set -- ${letter}zap $args -- "\$1"
+Push -c myexec "$@"
+Echo "$myexec"
+! $showonly || exit 0
+"$@" &
+killme=$!
+trapret=130
+KillTrap() {
+	trap : EXIT HUP INT TERM
+	[ -z "$killme" ] || kill "$killme"
+	killme=
+	trap - EXIT HUP INT TERM
+	exit $trapret
+}
+trap KillTrap EXIT HUP INT TERM
+sleep "$stop"
+trapret=0
+KillTrap

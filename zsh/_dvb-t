@@ -20,12 +20,12 @@ args=(
 '-a+[NUM (set adapter)]:adaptor:()'
 '-F+[NUM (set frontend)]:frontend:()'
 '-d+[NUM (set demux)]:demux:()'
+'-s+[TIME (set start)]:start time:("23\:59" "23\:59\:00 31 Dec 2013" "23\:59\:01 today" "now")'
+{'(-e)-t','(-t)-e'}'+[TIME (set stop/length)]:stop time:->stoptime'
 )
 if $dvbt
 then	args+=(
 '-q[quiet]'
-'-s+[TIME (set start)]:start time:("23\:59" "23\:59\:00 31 Dec 2013" "23\:59\:01 today" "now")'
-{'(-e)-t','(-t)-e'}'+[TIME (set stop/length)]:stop time:->stoptime'
 )
 fi
 args+=(
