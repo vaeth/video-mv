@@ -22,26 +22,15 @@ args=(
 '-d+[NUM (set demux)]:demux:()'
 '-s+[TIME (set start)]:start time:("23\:59" "23\:59\:00 31 Dec 2013" "23\:59\:01 today" "now")'
 {'(-e)-t','(-t)-e'}'+[TIME (set stop/length)]:stop time:->stoptime'
-)
-if $dvbt
-then	args+=(
 '-q[quiet]'
-)
-fi
-args+=(
 '1:channel:->channel'
+'2:output file:_files'
 )
-if $dvbt
-then	arge+=(
-'2:output file or -:_files'
-)
-fi
 _arguments -s -S -A '-*' : $args
 local ret=$?
 case $state in
 (channel)
 	local chf channel flist
-	channel=(ARD BBC CNN)
 	chf=$(emulate sh && {
 		dvb=:
 		if test -r /etc/videodefaults
@@ -58,6 +47,7 @@ case $state in
 			/etc/channels-czap.conf)
 	fi
 	flist+=(/etc/channels.conf)
+	channel=(ARD BBC CNN)
 	for chf in $flist
 	do	if [[ -n $chf && -r $chf ]]
 		then	channel=(${(f)"$(sed -n -e 's/:.*//p' -- "$chf" 2>/dev/null)"})

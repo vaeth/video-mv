@@ -21,24 +21,27 @@ CalcChannels() {
 		/etc/channels.conf
 	do	test -z "$calcchannelsi" && continue
 		channels=$calcchannelsi
-		test -r "$channels" && calccannels=$channels && return
+		test -r "$channels" && calcchannels=$channels && return
 	done
 }
 
 Usage() {
 	CalcChannels || calcchannels="nonreadable $calcchannels"
+	msgignore=
+	$dvbc || msgignore=' (FILE is ignored)'
+	Echo \
+"Usage: ${0##*/} [options] channel [FILE]"
 	if $dvbt
-	then	Echo "Usage: ${0##*/} [options] channel [FILE]
-If no FILE is given, a random name is chosen; use - to select standard output.
-Options:
--f      If FILE exists override it
--q      Quiet"
-	else	Echo "Usage: ${0##*/} [options] channel
-Sets up /dev/dvb/adapterX/dvr0 for TS recording.
-Options:"
+	then	Echo \
+"If no FILE is given, a random name is chosen."
+	else	Echo \
+"Usage: ${0##*/} [options] channel [FILE]
+If no FILE is given, only set up /dev/dvb/adapterX/dvr0 for TS recording."
 	fi
 	Echo \
-"-r      Set up /dev/dvb/adapterX/dvr0 for TS recording (FILE is ignored)
+"Options:
+-f      If FILE exists override it
+-r      Set up /dev/dvb/adapterX/dvr0 for TS recording$msgignore
 -p      add pat and pmt to TS recording (implies -r)
 -t STOP Stop after given timeout.  STOP is [[hh:]mm:]ss
 -e STOP as -t STOP
@@ -48,14 +51,15 @@ Options:"
 -a NUM  Use adaptor NUM
 -F NUM  Use frontend NUM
 -d NUM  Use demux NUM
--n      Output only command but do not execute something
+-n      Output only commands but do not execute anything
+-q      Quiet
 -T[pPfHsS-] pass option(s) to the title script; - means no title"
 	exit ${1:-1}
 }
 
 Check() {
 	$force || [ -z "${file:++}" ] && return
-	if [ "$file" != '-' ] && test -r "$file"
+	if test -r "$file"
 	then	Fatal "$file exists.  Use -f to override"
 	fi
 }
@@ -75,15 +79,13 @@ SetDefaults() {
 	verbose=:
 	showonly=false
 	dvb=:
-	options='nrpe:t:s:c:a:F:d:T:h?'
-	$dvbc || options='qf'$options
 	SourceDefaults
 }
 
 # Parse options
 
 SetDefaults
-while getopts $options opt
+while getopts 'nqfrpe:t:s:c:a:F:d:T:h?' opt
 do	case $opt in
 	n)	showonly=:;;
 	q)	verbose=false;;
@@ -102,9 +104,10 @@ do	case $opt in
 done
 shift $(( $OPTIND -1 ))
 [ $# -ge 1 ] || Usage
+channelname=$1
+shift
 if $dvbt
-then	[ $# -le 2 ] || Usage
-else	[ $# -le 1 ] || Usage
+then	[ $# -le 1 ] || Usage
 fi
 
 # Interpret parameters
@@ -118,20 +121,22 @@ esac
 
 CalcChannels || Fatal "cannot read channels file $calcchannels"
 
-fileout=:
+ignorefile=false
 random=false
 file=
-if $dvbt && [ -z "$pass" ]
-then	pass=o
-	if [ $# -lt 2 ] || [ -z "$2" ]
-	then	random=:
-	else	file=$2
-		Check
-		[ "$file" != '-' ] || fileout=false
+if $dvbt
+then	if [ -z "$pass" ]
+	then	pass=o
+		random=:
+	else	ignorefile=:
 	fi
 fi
-
-$fileout || verbose=false
+if [ $# -ge 1 ]
+then	file=${1:-empty.avi}
+	shift
+	random=false
+	$ignorefile || Check
+fi
 
 if [ -n "${stop:++}" ]
 then	CalcSeconds stop "$stop"
@@ -147,49 +152,101 @@ then	file=`mktemp /tmp/${0##*/}.$$XXXXXXXX` && test -r "$file" || \
 else	Check
 fi
 
+adapterdev=/dev/dvb/adapter${adapter:-0}/dvr0
 if [ -n "$file" ]
 then	text=$file
-else	text=/dev/dvb/adapter${adapter:-0}/dvr0
+else	text=$adapterdev
 fi
 
-if $fileout
+if $verbose && ! $showonly
 then	Echo "
-${0##*/}: $1 -> $text"
-	$dvbt || Echo "videoencode.ffmpeg -u c $text filename"
-	Echo
-	Title "$1->$text"
+${0##*/}: $channelname -> $text
+"
+	if $dvbc && [ -z "$file" ] || {
+		$dvbt && [ "$pass" != 'o' ]
+	}
+	then	Push -c toprint "$adapterdev"
+		Echo \
+"# You will have to use one of the following commands or something similar
+#	cat $toprint >filename.avi
+#	videoencode.ffmpeg -u c $toprint filename.avi
+#	videoencode.mplayer - $toprint
+#	video.mplayer - $toprint
+"
+	fi
+	Title "$channelname->${text##*/}"
 fi
 
-Push -c args
-[ -z "$pass" ] || Push args "-$pass"
-[ -z "$file" ] || Push args "$file"
+Push -c mycmd ${letter}zap
+[ -z "$pass" ] || Push mycmd "-$pass"
 if $dvbt
-then	[ -z "$stop" ] || Push args '-t' "$stop"
+then	[ -z "$file" ] || Push mycmd "$file"
+	[ -z "$stop" ] || Push mycmd '-t' "$stop"
 fi
-[ -z "$channels" ] || Push args '-c' "$channels"
-[ -z "$adapter" ]  || Push args '-a' "$adapter"
-[ -z "$frontend" ] || Push args '-f' "$frontend"
-[ -z "$demux" ] || Push args '-d' "$demux"
+[ -z "$channels" ] || Push mycmd -c "$channels"
+[ -z "$adapter" ]  || Push mycmd -a "$adapter"
+[ -z "$frontend" ] || Push mycmd -f "$frontend"
+[ -z "$demux" ]    || Push mycmd -d "$demux"
 
-if $dvbt || [ -z "$stop" ]
-then	eval MyExec ${letter}zap $args -- "\$1"
+Push mycmd -- "$channelname"
+if $dvbt || [ -z "${stop:++}${file:++}" ]
+then	eval MyExec $mycmd
 	Exit
 fi
-eval set -- ${letter}zap $args -- "\$1"
-Push -c myexec "$@"
-Echo "$myexec"
-! $showonly || exit 0
-"$@" &
-killme=$!
+
 trapret=130
+unset killzap
+unset killcat
 KillTrap() {
 	trap : EXIT HUP INT TERM
-	[ -z "$killme" ] || kill "$killme"
-	killme=
+	if [ -n "${killzap++}" ]
+	then	$verbose || $showonly && Echo 'kill $killzap'
+		$showonly || [ -z "$killzap" ] || kill "$killzap"
+		MyExec unset killzap
+		[ -z "${killcat++}" ] || MyExec sleep 5
+	fi
+	if [ -n "${killcat++}" ]
+	then	$verbose || $showonly && Echo 'kill $killcat'
+		$showonly || [ -z "$killcat" ] || kill "$killcat"
+		MyExec unset killcat
+	fi
 	trap - EXIT HUP INT TERM
 	exit $trapret
 }
 trap KillTrap EXIT HUP INT TERM
-sleep "$stop"
+
+if [ -n "$file" ]
+then	if $force
+	then	set +C >/dev/null 2>&1
+	else	set -C >/dev/null 2>&1
+	fi
+	if $verbose || $showonly
+	then	Push -c toprintA cat -- "$adapterdev"
+		Push -c toprintB "$file"
+		Echo "$toprintA >$toprintB"' &
+killcat=$!'
+		killcat=
+	fi
+	if ! $showonly
+	then	cat -- "$adapterdev" >"$file" &
+		killcat=$!
+	fi
+fi
+if [ -z "$stop" ]
+then	eval MyExec $mycmd
+	trapret=$?
+	KillTrap
+fi
+if $verbose || $showonly
+then	Echo "$mycmd"' &
+killzap=$!'
+	killzap=
+fi
+if ! $showonly
+then	eval set -- $mycmd
+	"$@" &
+	killzap=$!
+fi
+eval MyExec sleep "$stop"
 trapret=0
 KillTrap
