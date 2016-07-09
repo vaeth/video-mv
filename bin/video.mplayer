@@ -1057,7 +1057,10 @@ Pass() {
 	else	Push -c ofarg '-f' "$oftype"
 	fi
 	if $record
-	then	Title "$titlepass${titlepass:+ }${output##*/}"
+	then	if [ -n "${titlepass:++}" ]
+		then	Title "$titlepass ${output##*/}"
+		else	Title "${output##*/}"
+		fi
 		if $mplayer
 		then	eval "$doexec mencoder \$quiet $ofarg \
 			\$noodml \
