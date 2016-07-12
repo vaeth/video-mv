@@ -163,7 +163,7 @@ then	Echo "
 ${0##*/}: $channelname -> $text
 "
 	if $dvbc && [ -z "$file" ] || {
-		$dvbt && [ "$pass" != 'o' ]
+		$dvbt && [ x"$pass" != x'o' ]
 	}
 	then	Push -c toprint "$adapterdev"
 		Echo \
@@ -243,7 +243,8 @@ killzap=$!'
 	killzap=
 fi
 if ! $showonly
-then	eval set -- $mycmd
+then	eval set -- a $mycmd
+	shift
 	"$@" &
 	killzap=$!
 fi

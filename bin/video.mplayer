@@ -410,7 +410,7 @@ SetDefaults() {
 
 SetStartEnd() {
 	startarg=${1%%-*}
-	[ "$startarg" = "$1" ] && return
+	[ x"$startarg" = x"$1" ] && return
 	endpos=${1##*-}
 	skips=$startarg
 	CalcSeconds startarg "$startarg"
@@ -476,7 +476,7 @@ do	case $opt in
 		CalcLamebr;;
 	3)	forcechan=1
 		lamemode=3
-		if [ "$OPTARG" -eq 1 ]
+		if [ x"$OPTARG" = x'1' ]
 		then	amode=2
 		else	amode=3
 		fi
@@ -589,13 +589,13 @@ If you really mean what you wrote use also opion -#'
 
 Echoexec() {
 	quiettmp=
-	if [ "$1" = '-q' ]
+	if [ x"$1" = x'-q' ]
 	then	quiettmp=1
 		shift
 	fi
 	execprefix=
 	echoexec=false
-	if [ "$1" = 'exec' ]
+	if [ x"$1" = x'exec' ]
 	then	echoexec=:
 		$have_trap || execprefix=exec
 		shift
@@ -623,10 +623,11 @@ Clean() {
 	s)
 		$mplayer || return 0
 		set +f
-		set -- "$soundmagic" analyse.log c*':'*trace*.txt
+		set -- a "$soundmagic" analyse.log c*':'*trace*.txt
 		set -f
+		shift
 		if $force
-		then	[ "$#" -le 0 ] || Echoexec rm -f -- "$@"
+		then	[ $# -le 0 ] || Echoexec rm -f -- "$@"
 			return
 		fi
 		for cleani
@@ -642,13 +643,18 @@ Clean() {
 	! $cleani || return 0
 	if ! $mplayer
 	then	set +f
-		set -- "${rump:-ffmpeg2pass}"*.log
+		set -- a "${rump:-ffmpeg2pass}"*.log
 		set -f
-		[ "$1" != "${rump:-ffmpeg2pass}*.log" ] || set --
-	else	set -- "$morepass" "$morepassed"
+		shift
+		[ x"$1" != x"${rump:-ffmpeg2pass}*.log" ] || {
+			set -- a
+			shift
+		}
+	else	set -- a "$morepass" "$morepassed"
+		shift
 	fi
-	if [ "$cleanarg" != 't' ]
-	then	[ "$#" -le 0 ] || Echoexec rm -f -- "$@"
+	if [ x"$cleanarg" != x't' ]
+	then	[ $# -le 0 ] || Echoexec rm -f -- "$@"
 		return
 	fi
 	for cleani
@@ -662,11 +668,11 @@ Clean() {
 Push -c input
 if ! $fromfile
 then	inputfile='tv://'
-	[ "$inputchannel" = '-' ] || inputfile=$inputfile$inputchannel
+	[ x"$inputchannel" = x'-' ] || inputfile=$inputfile$inputchannel
 	passarg='v'
 else	[ $# -ge 1 ] || Usage
 	passarg=$1
-	if [ "$passarg" = '0' ]
+	if [ x"$passarg" = x'0' ]
 	then	Clean f
 		exit 0
 	fi
@@ -724,9 +730,9 @@ if $needname
 then	[ $# -lt 1 ] && Usage
 	[ -n "${1:++}" ] || Usage
 	output=$1
-	if [ "$output" = '-' ]
+	if [ x"$output" = x'-' ]
 	then	$fromfile || record=false
-	elif ! $fromfile && [ "$output" = '+' ]
+	elif ! $fromfile && [ x"$output" = x'+' ]
 	then	output='-'
 	else	record=:
 		if test -r "$output"
@@ -750,7 +756,7 @@ Push -c addname
 collectopt=:
 for collecti
 do	if $collectopt
-	then	if [ "$collecti" = '--' ]
+	then	if [ x"$collecti" = x'--' ]
 		then	collectopt=false
 		else	Push add "$collecti"
 		fi
@@ -1050,7 +1056,7 @@ Pass() {
 	Echoexec date
 	[ "$currvpass" -eq 3 ] && Echoexec cp -a -- "$morepass" "$morepassed"
 	doexec=Echoexec
-	[ "${2-}" = 'noexec' ] || doexec='Echoexec exec'
+	[ x"${2-}" = x'noexec' ] || doexec='Echoexec exec'
 	Push -c ofarg
 	[ -z "$oftype" ] || if $mplayer
 	then	Push -c ofarg '-of' "$oftype"
@@ -1136,11 +1142,11 @@ if ! $fromfile
 then	Clean s && Clean t || return 2
 	Setsound
 	Pass v
-elif [ "$passarg" = 'c' ]
+elif [ x"$passarg" = x'c' ]
 then	BrTest
 	Clean t
 	Pass c
-elif [ "$passarg" = '-' ]
+elif [ x"$passarg" = x'-' ]
 then	BrTest
 	Pass -
 else	Passes "$frompass" "$topass"
