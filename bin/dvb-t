@@ -147,8 +147,9 @@ then	MyExec sleepto ${titleopt:+"-T$titleopt"} "$start" || Exit
 fi
 
 if $random
-then	file=`mktemp /tmp/${0##*/}.$$XXXXXXXX` && test -r "$file" || \
-		Fatal 'mktemp failed'
+then	file=`umask 077 && mktemp -- ${TMPDIR:-/tmp}/${0##*/}.$$XXXXXXXX` \
+		&& [ -n "${file:++}" ] && test -r "$file" \
+		|| Fatal 'mktemp failed'
 else	Check
 fi
 
