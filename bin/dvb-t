@@ -85,7 +85,7 @@ SetDefaults() {
 # Parse options
 
 SetDefaults
-while getopts 'nqfrpe:t:s:c:a:F:d:T:h?' opt
+while getopts 'nqfrpe:t:s:c:a:F:d:T:h' opt
 do	case $opt in
 	n)	showonly=:;;
 	q)	verbose=false;;
@@ -99,6 +99,7 @@ do	case $opt in
 	[te])	stop=$OPTARG;;
 	s)	start=$OPTARG;;
 	T)	titleopt=$titleopt$OPTARG;;
+	'?')	exit 1;;
 	*)	Usage 0;;
 	esac
 done

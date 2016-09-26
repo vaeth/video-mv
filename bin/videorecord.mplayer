@@ -49,13 +49,14 @@ prog=video.$modus
 
 # Parse options
 
-while getopts 'pnsqVx:T:h?' opt
+while getopts 'pnsqVx:T:h' opt
 do	case $opt in
 	[pns])	showonly=:;;
 	q)	quiet='-q';;
 	x)	prog=$OPTARG;;
 	V)	verbose=false;;
 	T)	titleopt=$titleopt$OPTARG;;
+	'?')	exit 1;;
 	*)	Usage 0;;
 	esac
 done

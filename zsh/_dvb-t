@@ -11,7 +11,7 @@ case $service in
 	dvbc=:;;
 esac
 args=(
-'(1 2 -)'{'-h','-H','-\\?'}'[help]'
+'(1 2 -)'{'-h','-H'}'[help]'
 '(1 -p)-r[set up /dev/dvb/adapterX/dvr0]'
 '(1 -r)-p[add pat and pmt, implies -r]'
 '-n[dry run\: execute nothing]'

@@ -19,10 +19,11 @@ options:
 titleopt=
 quiet=false
 OPTIND=1
-while getopts "T:qh?" opt
+while getopts "T:qh" opt
 do	case $opt in
 	T)	titleopt=$titleopt$OPTARG;;
 	q)	quiet=:;;
+	'?')	exit 1;;
 	*)	Usage 0;;
 	esac
 done
