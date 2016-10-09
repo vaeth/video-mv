@@ -121,7 +121,7 @@ case $stop in
 	Usage;;
 esac
 
-CalcChannels || Fatal "cannot read channels file $calcchannels"
+CalcChannels || Fatal "cannot read channels file ${channels-}"
 
 ignorefile=false
 random=false
