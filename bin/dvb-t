@@ -23,10 +23,11 @@ CalcChannels() {
 		channels=$calcchannelsi
 		test -r "$channels" && calcchannels=$channels && return
 	done
+	return 1
 }
 
 Usage() {
-	CalcChannels || calcchannels="nonreadable $calcchannels"
+	CalcChannels || calcchannels="nonreadable ${channels-}"
 	msgignore=
 	$dvbc || msgignore=' (FILE is ignored)'
 	Echo \
