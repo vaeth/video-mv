@@ -118,8 +118,7 @@ case $state in
 	'wmv1:Windows Media Video, version 1 (AKA WMV7)'
 	'wmv2:Windows Media Video, version 2 (AKA WMV8)'
 	)
-	_describe -t codec 'video codec' codec
-	ret=$?;;
+	_describe -t codec 'video codec' codec && ret=0;;
 (mbd)
 	local mbd
 	mbd=(
@@ -127,8 +126,7 @@ case $state in
 	'1:shortest'
 	'2:best quality ratio (recommended)'
 	)
-	_describe -t mbd 'mbd value' mbd
-	ret=$?;;
+	_describe -t mbd 'mbd value' mbd && ret=0;;
 (stoptime)
 	local stoptime
 	stoptime=(
@@ -136,8 +134,7 @@ case $state in
 	'3600:seconds'
 	'10mb:megabytes'
 	)
-	_describe -t time 'stop time' stoptime
-	ret=$?;;
+	_describe -t time 'stop time' stoptime && ret=0;;
 (starttime)
 	local starttime
 	starttime=(
@@ -145,8 +142,7 @@ case $state in
 	'01\:00\:00-01\:00\:01:skip 1 hour, stop 1 second later'
 	'3600-7200:start at 3600 seconds, stop at 7200 seconds'
 	)
-	_describe -t time 'start time' starttime
-	ret=$?;;
+	_describe -t time 'start time' starttime && ret=0;;
 (horizontal)
 	local crop
 	crop=(
@@ -160,8 +156,7 @@ case $state in
 	'762\:4:optical max (incompatible\: not multiple of 16)'
 	'768\:0:maximal value'
 	)
-	_describe -t crop 'width:xmin' crop
-	ret=$?;;
+	_describe -t crop 'width:xmin' crop && ret=0;;
 (vertical)
 	local crop
 	crop=(
@@ -170,8 +165,7 @@ case $state in
 	'568\:6:optical max (incompatible\: not mltiple of 16)'
 	'576\:0:maximal value'
 	)
-	_describe -t crop 'height:ymin' crop
-	ret=$?;;
+	_describe -t crop 'height:ymin' crop && ret=0;;
 (aspect)
 	local aspect
 	aspect=(
@@ -184,13 +178,11 @@ case $state in
 	'1000:seldom used'
 	'720\:576:default values if crop is not set'
 	)
-	_describe -t aspect 'width[:height] (default is 720:576 or crop values)' aspect
-	ret=$?;;
+	_describe -t aspect 'width[:height] (default is 720:576 or crop values)' aspect && ret=0;;
 (livefile)
 	_alternative \
 	'Output file:Output file:_files' \
-	'live display:live display:(-)'
-	ret=$?;;
+	'live display:live display:(-)' && ret=0;;
 (passes)
 	local pass=${opt_args[-P]}
 	[[ -n $pass ]] || pass=$defpass
@@ -199,7 +191,6 @@ case $state in
 	else	pass=1-$pass
 	fi
 	_description jobrange expl 'passes'
-	compadd "$expl[@]" - - $pass
-	ret=$?;;
+	compadd "$expl[@]" - - $pass && ret=0;;
 esac
 return ret

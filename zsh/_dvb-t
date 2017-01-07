@@ -54,15 +54,13 @@ case $state in
 			break
 		fi
 	done
-	_describe -t channel 'DVB-T channel' channel
-	ret=$?;;
+	_describe -t channel 'DVB-T channel' channel && ret=0;;
 (stoptime)
 	local stoptime
 	stoptime=(
 	'01\:00\:00:hh\:mm:\:ss'
 	'3600:seconds'
 	)
-	_describe -t time 'stop time' stoptime
-	ret=$?;;
+	_describe -t time 'stop time' stoptime && ret=0;;
 esac
 return ret

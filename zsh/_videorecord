@@ -21,7 +21,6 @@ case $state in
 	'-:infinite length'
 	':infinite length'
 	)
-	_describe -t length 'length' len
-	ret=$?;;
+	_describe -t length 'length' len && ret=0;;
 esac
 return ret
