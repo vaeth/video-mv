@@ -50,7 +50,7 @@ case $state in
 	channel=(ARD BBC CNN)
 	for chf in $flist
 	do	if [[ -n $chf && -r $chf ]]
-		then	channel=(${(f)"$(sed -n -e 's/:.*//p' -- "$chf" 2>/dev/null)"})
+		then	channel=(${(f)"$(sed -n -e '/^#/d' -e 's/:.*//p' -- "$chf" 2>/dev/null)"})
 			break
 		fi
 	done
