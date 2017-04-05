@@ -548,7 +548,8 @@ do	case $opt in
 	Z)	alsa=:;;
 # Special options for File input
 	P)	totalpass=$OPTARG;;
-# The only remaining admissible options are "help" options:
+# The only remaining admissible options are errors or "help"
+	'?')	exit 1;;
 	*)	Usage 0;;
 	esac
 done
@@ -919,7 +920,7 @@ CalcSopt() {
 	then	CalcSoptFFmpeg "$@"
 		return
 	fi
-	if [ -z "${sound:++}" ]
+	if [ -z "${sound:++}" ] || [ "$1" = n ]
 	then	tvaudio='noaudio'
 		if $mpv
 		then	Push sopt '--no-audio'
@@ -951,7 +952,7 @@ CalcSopt() {
 }
 
 CalcSoptFFmpeg() {
-	if [ -z "${sound:++}" ]
+	if [ -z "${sound:++}" ] || [ "$1" = n ]
 	then	Push sopt '-an'
 		return
 	fi
@@ -1024,7 +1025,7 @@ Pass() {
 		if [ "$totalpass" -gt 0 ]
 		then	if [ "$arg" -lt "$totalpass" ]
 			then	# Do not encode the sound except in the last pass:
-				CalcSopt 'c'
+				CalcSopt 'n'
 				if [ "$arg" -lt "$topass" ]
 				then	$alwaysout || outputtmp='/dev/null'
 				fi

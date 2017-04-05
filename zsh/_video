@@ -22,7 +22,7 @@ args=(
 '-p[Print instead of executing]'
 '-\#[Skip most sanity checks for the options]'
 '-q[quiet]'
-'-m+[CONTAINER. Define record container format]:container format:(avi mkv mpeg lavf rawvideo rawaudio)'
+'-m+[CONTAINER. Define record container format]:container format:(avi matroska mpeg lavf rawvideo rawaudio)'
 '-4+[CODEC.  Set codec format]:codec format:->codec'
 '-b+[BITRATE. Set bitrate]:bit rate:(600 700 800 900 1000 1200 1400 1600)'
 '-F+[FILTER (Add FILTER to chain)]:video filter; v is yadif+hqdn3d:(yadif "pp=lb" pullup filmdint hqdn3d v)'
