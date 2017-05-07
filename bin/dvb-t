@@ -6,10 +6,12 @@ set -u
 case ${0##*/} in
 *t)
 	letter=t
+	capletter=T
 	dvbt=:
 	dvbc=false;;
 *)
 	letter=c
+	capletter=C
 	dvbt=false
 	dvbc=:;;
 esac
@@ -26,21 +28,53 @@ CalcChannels() {
 	return 1
 }
 
+LdPreload() {
+	$ld_preload || return 0
+	case ${LD_PRELOAD-} in
+	*/libmediaclient.so)
+		return 0;;
+	esac
+	! test -r /etc/ld.so.preload || \
+		! grep -q /libmediaclient.so /etc/ld.so.preload >/dev/null 2>&1 \
+		|| return 0
+	ldpreload=
+	ldpreload=`PATH="${PATH:-}${PATH:+:}/sbin" ldconfig -p 2>&1 | sed -ne 's/^[[:space:]]*libmediaclient.so .* => //p'`
+	[ -n "$ldpreload" ] && test -x "$ldpreload" || return 0
+	if [ -n "${LD_PRELOAD:++}" ]
+	then	LD_PRELOAD=$ldpreload' '$LD_PRELOAD
+		Echo "LD_PRELOAD='$LD_PRELOAD'"
+	else	LD_PRELOAD=$ldpreload
+		export LD_PRELOAD
+		Echo "LD_PRELOAD='$LD_PRELOAD'
+export LD_PRELOAD"
+	fi
+}
+
+PreCmd() {
+	eval set -- 1 $precmd
+	shift
+	for precmdi
+	do	eval MyExec "$precmdi"
+	done
+}
+
 Usage() {
 	CalcChannels || calcchannels="nonreadable ${channels-}"
 	msgignore=
 	$dvbc || msgignore=' (FILE is ignored)'
 	Echo \
-"Usage: ${0##*/} [options] channel [FILE]"
+"Usage: ${0##*/} [options] channel [FILE]
+Record from TV to FILE; if channel is '-' quit after honouring options"
 	if $dvbt
 	then	Echo \
 "If no FILE is given, a random name is chosen."
 	else	Echo \
-"Usage: ${0##*/} [options] channel [FILE]
-If no FILE is given, only set up /dev/dvb/adapterX/dvr0 for TS recording."
+"If no FILE is given, only set up /dev/dvb/adapterX/dvr0 for TS recording."
 	fi
 	Echo \
-"Options:
+"If reasonable, /usr/lib{64,}/libmediaclient.so is prepended to LD_PRELOAD
+which may be useful for sundtek drivers.
+Options:
 -f      If FILE exists override it
 -r      Set up /dev/dvb/adapterX/dvr0 for TS recording$msgignore
 -p      add pat and pmt to TS recording (implies -r)
@@ -54,6 +88,9 @@ If no FILE is given, only set up /dev/dvb/adapterX/dvr0 for TS recording."
 -d NUM  Use demux NUM
 -n      Output only commands but do not execute anything
 -q      Quiet
+-C CMD  (accumulatively) eval CMD in advance (at start time)
+-M      As -C 'mediaclient --setdtvmode=DVB$capletter' (for sundtek)
+-L      Do not try to extend LD_PRELOAD for sundtek
 -T[pPfHsS-] pass option(s) to the title script; - means no title"
 	exit ${1:-1}
 }
@@ -79,20 +116,25 @@ SetDefaults() {
 	demux=
 	verbose=:
 	showonly=false
+	ld_preload=:
 	dvb=:
+	Push -c precmd
 	SourceDefaults
 }
 
 # Parse options
 
 SetDefaults
-while getopts 'nqfrpe:t:s:c:a:F:d:T:h' opt
+while getopts 'nqfrpLMC:e:t:s:c:a:F:d:T:h' opt
 do	case $opt in
 	n)	showonly=:;;
 	q)	verbose=false;;
 	r)	pass=r;;
 	p)	pass=p;;
 	f)	force=:;;
+	L)	ld_preload=false;;
+	M)	Push precmd "mediaclient --setdtvmode=DVB$capletter";;
+	C)	Push precmd "$OPTARG";;
 	c)	channels=$OPTARG;;
 	F)	frontend=$OPTARG;;
 	a)	adapter=$OPTARG;;
@@ -147,6 +189,10 @@ fi
 if [ -n "${start:++}" ]
 then	MyExec sleepto ${titleopt:+"-T$titleopt"} "$start" || Exit
 fi
+
+LdPreload
+PreCmd
+[ "$channelname" != '-' ] || Exit
 
 if $random
 then	file=`umask 077 && mktemp -- ${TMPDIR:-/tmp}/${0##*/}.$$XXXXXXXX` \

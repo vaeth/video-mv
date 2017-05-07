@@ -4,9 +4,11 @@ typeset -A opt_args
 local args dvbt dvbc
 case $service in
 (*t)
+	capletter=T
 	dvbt=:
 	dvbc=false;;
 (*)
+	capletter=C
 	dvbt=false
 	dvbc=:;;
 esac
@@ -15,13 +17,16 @@ args=(
 '(1 -p)-r[set up /dev/dvb/adapterX/dvr0]'
 '(1 -r)-p[add pat and pmt, implies -r]'
 '-n[dry run\: execute nothing]'
-'*-c+[FILE (channel file)]:channel file:_files'
-'*-T+[OPT (set title option)]:title option:_title_opt'
-'-a+[NUM (set adapter)]:adaptor:()'
-'-F+[NUM (set frontend)]:frontend:()'
-'-d+[NUM (set demux)]:demux:()'
-'-s+[TIME (set start)]:start time:("23\:59" "23\:59\:00 31 Dec 2013" "23\:59\:01 today" "now")'
-{'(-e)-t','(-t)-e'}'+[TIME (set stop/length)]:stop time:->stoptime'
+"-M[-C 'mediaclient --setdtvmode=DVB$capletter']"
+'-L[Do not extend LD_PRELOAD]'
+'*-C+[Eval specified command in advance]:command:()'
+'*-c+[Set specified channel file]:channel file:_files'
+'*-T+[set specified title option]:title option:_title_opt'
+'-a+[set specified adapter]:adapter:()'
+'-F+[set specified frontend (numeric)]:frontend:()'
+'-d+[set specified demux (numeric)]:demux:()'
+'-s+[set specified start time)]:start time:("23\:59" "23\:59\:00 31 Dec 2013" "23\:59\:01 today" "now")'
+{'(-e)-t','(-t)-e'}'+[set specified recording duration]:stop time:->stoptime'
 '-q[quiet]'
 '1:channel:->channel'
 '2:output file:_files'
@@ -54,6 +59,7 @@ case $state in
 			break
 		fi
 	done
+	channel+=(-)
 	_describe -t channel 'DVB-T channel' channel && ret=0;;
 (stoptime)
 	local stoptime
