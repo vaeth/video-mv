@@ -896,7 +896,7 @@ Setsound() {
 
 SanitizeImmediatemode() {
 	case ${immediatemode:-n} in
-	[nNfF0-]*|[oO][fF]*)
+	[nNfF]*|[oO][fF]*|0|-)
 		if $mpv
 		then	immediatemode=no
 		else	immediatemode=0
