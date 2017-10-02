@@ -78,9 +78,12 @@ Options:
 -f      If FILE exists override it
 -r      Set up /dev/dvb/adapterX/dvr0 for TS recording$msgignore
 -p      add pat and pmt to TS recording (implies -r)
--t STOP Stop after given timeout.  STOP is [[hh:]mm:]ss
--e STOP as -t STOP
--s TIME Start at TIME
+-e LEN  Stop after given timeout.  LEN is [[hh:]mm:]ss
+-t LEN  as -e LEN
+-s TIME Start at TIME. Examples for TIME:
+        now
+        23:59
+        23:59:59 31 Dec 2012 (do not forget quoting from the shell)
 -c FILE Use FILE (currently: $calcchannels). Fallbacks are:
          ~/.${letter}zap/channels.conf /etc/channels-${letter}zap.conf /etc/channels.conf
 -a NUM  Use adaptor NUM

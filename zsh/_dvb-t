@@ -18,9 +18,9 @@ args=(
 '(1 -r)-p[add pat and pmt, implies -r]'
 '-n[dry run\: execute nothing]'
 "-M[-C 'mediaclient --setdtvmode=DVB$capletter']"
-'-L[Do not extend LD_PRELOAD]'
-'*-C+[Eval specified command in advance]:command:()'
-'*-c+[Set specified channel file]:channel file:_files'
+'-L[do not extend LD_PRELOAD]'
+'*-C+[eval specified command in advance]:command:()'
+'*-c+[set specified channel file]:channel file:_files'
 '*-T+[set specified title option]:title option:_title_opt'
 '-a+[set specified adapter]:adapter:()'
 '-F+[set specified frontend (numeric)]:frontend:()'

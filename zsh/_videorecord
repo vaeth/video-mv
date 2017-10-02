@@ -1,26 +1,46 @@
 #compdef videorecord videorecord.mplayer videorecord.ffmpeg
 local curcontext="$curcontext" state state_descr line
 typeset -A opt_args
+local callservice service
+callservice=${service##*.}
+callservice=video.${callservice:-mplayer}
 _arguments -C -s -S -A '-?*' : \
 '(1 -)'{'-h','-H'}'[help]' \
-{'(-s -n)-p','(-n -p)-s','(-s -p)-n'}'[dry run: execute nothing]' \
-"-x+[PROG (Use program instead of $service)]:program:(videorecord.mplayer videorecord.ffmpeg)" \
-'*-T+[OPT (set title option)]:title option:_title_opt' \
+{'(-n)-p','(-p)-n'}'[dry run: execute nothing]' \
+'-s+[set specified start time]:start time:->startdate' \
+{'(-e)-t','(-t)-e'}'+[set specified recording duration]:stop time:->stoptime' \
+"-M[-c 'mediaclient.video -c external']" \
+"-c[eval specified command before $callservice]:program:('mediaclient.video -c external' 'mediaclient.video -c internal')" \
+"-x+[use specified program instead of $callservice)]:program:(videorecord.mplayer videorecord.ffmpeg)" \
+'-I+[use specified input channel; - for none]:input channel:(-)' \
+'*-T+[set specified title option]:title option:_title_opt' \
 '-q[quiet]' \
-'1:file to save (DIR/basename):_files' \
-'2:start time:("23\:59" "23\:59\:00 31 Dec 2012" "23\:59\:01 today" "now")' \
-'3:length:->len' \
-'*::video options'
+'1:file to save:_files' \
+"*::$callservice options:->videoservice"
 local ret=$?
 case $state in
-(len)
-	local len
-	len=(
-	'23\:59\:00:hh\:mm\:ss'
-	'0:infinite length'
-	'-:infinite length'
-	':infinite length'
+(startdate)
+	local startdate
+	startdate=(
+	'12\:57\:00 31 Dec 2013:at specified date'
+	'03\:27:at specified time today or tomorrow'
+	'23\:57\:01 today:at specified time today'
+	'now'
 	)
-	_describe -t length 'length' len && ret=0;;
+	_describe -t date 'start date' startdate && ret=0;;
+(stoptime)
+	local stoptime
+	stoptime=(
+	'01\:00\:00:hh\:mm:\:ss'
+	'3600:seconds'
+	'10mb:megabytes'
+	)
+	_describe -t time 'stop time' stoptime && ret=0;;
+(videoservice)
+	shift $((CURRENT-2)) words
+	CURRENT=2
+	service=$callservice.options
+	_message "${words[*]}"
+	_video && ret=0;;
 esac
 return ret

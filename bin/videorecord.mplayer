@@ -12,13 +12,10 @@ esac
 
 Usage() {
 	Echo \
-"Usage: ${0##*/} [options] [DIR/]basename TIME LEN [video.$modus options]
-Records video DIR/basename.avi at the given time and duration.
+"Usage: ${0##*/} [options] PATH [video.$modus options]
+Records video PATH at the given time and duration.
 
 TIME must be understood by the 'date' utility. Examples:
-	now
-	23:59
-	'23:59:59 31 Dec 2012' (do not forget quoting from the shell)
 
 LEN   hh:mm:ss  (hh=hour, mm=minute, ss=second)
 LEN may be - or 0 or empty: In that case, LEN is assumed to be infinity;
@@ -26,16 +23,26 @@ in this case you must stop manually, e.g. with Ctrl-C.
 
 All additional arguments are passed as options to the video script.
 Typical examples are:
-  -d-20   Darker by 20
-  -f      Force overwriting existing file
-  -g      No ODML headers
+-d-20   Darker by 20
+-f      Force overwriting existing file
+-g      No ODML headers
 
 The following options are available:
-  -q        Be quiet
-  -V        Be not very verbose
-  -p -n -s  Output only command(s) but do not execute something
-  -x PROG   Use PROG instead of video.$modus
-  -T[pPfHsS-] pass option(s) to the title script; - means no title"
+-e LEN  Stop after given timeout, using video.$modus -eLEN
+        A typical format for LEN is hh:mm:ss
+-t LEN  Same as -e LEN
+-s TIME Start at TIME. Examples for TIME:
+        now
+        23:59
+        23:59:59 31 Dec 2012 (do not forget quoting from the shell)
+-I CH   Use input channel CH (- for none), using video.$modus -ICH
+-q      Be quiet
+-V      Be not very verbose
+-p -n   Output only command(s) but do not execute something
+-c PRE  Eval PRE before calling video.$modus.
+-M      Same as -c 'mediaclient.video -c external'
+-x PROG Use PROG instead of video.$modus
+-T[pPfHsS-] pass option(s) to the title script; - means no title"
 	exit ${1:-1}
 }
 
@@ -46,16 +53,25 @@ quiet=
 titleopt=
 showonly=false
 prog=video.$modus
+time=
+len=
+precmd=
+channel=
 
 # Parse options
 
-while getopts 'pnsqVx:T:h' opt
+while getopts 'Mc:pns:e:t:I:qVx:T:h' opt
 do	case $opt in
-	[pns])	showonly=:;;
+	[pn])	showonly=:;;
 	q)	quiet='-q';;
+	s)	time=$OPTARG;;
+	[et])	len=$OPTARG;;
+	I)	channel=$OPTARG;;
 	x)	prog=$OPTARG;;
 	V)	verbose=false;;
 	T)	titleopt=$titleopt$OPTARG;;
+	M)	precmd='mediaclient.video -c external';;
+	c)	precmd=$OPTARG;;
 	'?')	exit 1;;
 	*)	Usage 0;;
 	esac
@@ -67,28 +83,14 @@ shift $(( $OPTIND -1 ))
 
 case $titleopt in
 *[!pPfHsS-]*)
-	Usage;;
+	 Fatal 'illegal -T argument';;
 esac
 
-base=${1##*/}
+name=${1##*/}
 srcdir=${1%/*}
 [ x"$srcdir" = x"$1" ] && srcdir=$PWD
-[ -n "$srcdir" ] && test -d "$srcdir" || Usage
+[ -n "$srcdir" ] && test -d "$srcdir" || "nonexistent directory $srcdir"
 shift
-
-[ $# -ge 1 ] || Usage
-time=$1
-shift
-len=${1-}
-case $len in
-0|-)
-	len=
-	shift;;
--*)
-	:;;
-*)
-	[ $# -ge 1 ] && shift;;
-esac
 
 MyCd() {
 	$verbose && Echo "cd $1"
@@ -107,11 +109,12 @@ DoRecord() {
 	if [ -n "$time" ]
 	then	MyExec sleepto $quiet ${titleopt:+"-T$titleopt"} "$time" \
 			|| EarlyReturn
-		$verbose && MyExec date
-		MyExec "$prog" $quiet ${len:+-e} $len \
-			${titleopt:+"-T$titleopt"} ${1+"$@"} "$base.avi"
-		rstat=$?
 	fi
+	$verbose && MyExec date
+	[ -z "$precmd" ] || eval "MyExec $precmd"
+	MyExec "$prog" $quiet ${len:+"-e$len"} ${channel:+"-I$channel"} \
+		${titleopt:+"-T$titleopt"} ${1+"$@"} "$name"
+	rstat=$?
 }
 
 $verbose && MyExec date
