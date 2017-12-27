@@ -17,6 +17,7 @@ args=(
 '(1 -p)-r[set up /dev/dvb/adapterX/dvr0]'
 '(1 -r)-p[add pat and pmt, implies -r]'
 '-n[dry run\: execute nothing]'
+'-f[force override if file exists]'
 "-M[-C 'mediaclient --setdtvmode=DVB$capletter']"
 '-L[do not extend LD_PRELOAD]'
 '*-C+[eval specified command in advance]:command:()'
