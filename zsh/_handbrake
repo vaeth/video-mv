@@ -1,0 +1,24 @@
+#compdef handbrake
+local args
+args=(
+'(1 2 * -)'{'-h','-H'}'[help]'
+'-1[1-pass only]'
+'-8[denoise with hqdn3d]'
+'-w+[set specified width]:width:(720)'
+'-l+[set specified length]:length:(576)'
+'-d+[set specified displaywidth]:displaywidth:(1024)'
+'-b+[set specified video bitrate]:bitrate:(500 600 700 800 900 1000 1100 1200 1300 1400 1500 1600)'
+'(-S)-s+[set specified start time]:start time:("00\:00\:00")'
+'(-E)-e+[set specified end time]:end time:("00\:00\:00")'
+'(-s)-S+[set specified start frame]:start frame:(0)'
+'(-e)-E+[set specified end frame]:end frame:(0)'
+'(-U)-u[Copy audio]'
+'(-u)-U[Copy audio mp3]'
+'-B+[set specified audio bitrate]:audio bitrate:(64 80 128 160)'
+'-n[dry run\: execute nothing]'
+'-f[force override if file exists]'
+'1:input file:_files'
+'2:output file:_files'
+'*:HandBrakeCli options:()'
+)
+_arguments -s -S -A '-*' : $args

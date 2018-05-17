@@ -1,0 +1,91 @@
+#!/bin/sh
+# (C) Martin V\"ath <martin@mvath.de>
+set -u
+. _videoscript.sh
+
+Usage() {
+	Echo "${0##*/}: [options] SOURCE [DEST[.m4v]] [HandBrakeCli options]
+-1 1-pass
+-8 denoise with hqdn3d
+-w width (currently $width)
+-l length (currently $length)
+-d display-width (currently $displaywidth)
+-b bitrate (currently $bitrate)
+-s [[h:]m:]s start time
+-S frame start
+-e [[h:]m:]s end time
+-E frame end
+-u Copy audio
+-U Copy audio mp3
+-B audio bitrate (currently $ab)
+-n Dry run: execute nothing
+-f Force override if destination file exists"
+	exit ${1:-1}
+}
+CalcHandbrakeNumber() {
+	IsNonzeroNumber "$2" || return 0
+	Echo "$1:$calchandbrakenumber"
+}
+videomode=mpeg4
+start_at=
+end_at=
+audiomode=mp3
+ab=128
+pass=-2T
+denoise=
+bitrate=600
+width=720
+length=576
+displaywidth=1024
+verbose=:
+showonly=false
+force=false
+OPTIND=1
+while getopts '18w:l:d:b:s:S:e:E:uUB:nfhH' opt
+do	case $opt in
+	1)	pass=;;
+	8)	denoise=-8;;
+	w)	width=`EchoIfNonzeroNumber "$OPTARG"`;;
+	l)	length=`EchoIfNonzeroNumber "$OPTARG"`;;
+	d)	displaywidth=`EchoIfNonzeroNumber "$OPTARG"`;;
+	b)	bitrate=${OPTARG};;
+	s)	CalcSeconds seconds "$OPTARG"
+		start_at=`CalcHandbrakeNumber 'duration' "$seconds"`;;
+	S)	start_at=`CalcHandbrakeNumber 'frame' "$OPTARG"`;;
+	e)	CalcSeconds seconds "$OPTARG"
+		end_at=`CalcHandbrakeNumber 'duration' "$seconds"`;;
+	E)	end_at=`CalcHandbrakeNumber 'frame' "$OPTARG"`;;
+	B)	ab=${OPTARG};;
+	u)	audiomode=copy
+		ab=;;
+	U)	audiomode=copy:mp3
+		ab=;;
+	n)	showonly=:;;
+	f)	force=:;;
+	'?')	exit 1;;
+	*)	Usage 0;;
+	esac
+done
+shift $(( $OPTIND - 1 ))
+[ $# -ge 1 ] || Usage
+source=$1
+shift
+if [ $# -ge 1 ]
+then	dest=${1%.*}.m4v
+	shift
+else	dest=${source%.*}.m4v
+fi
+[ "$source" != "$dest" ] || Fatal 'SOURCE and DEST are the same file'
+$force || ! test -f "$dest" || Fatal "$dest already exists"
+eval MyExec HandBrakeCLI ${videomode:+-e"$videomode"} \
+	${start_at:+--start-at "$start_at"} \
+	${end_at:+--end-at "$start_at"} \
+	${audiomode:+-E"$audiomode"} \
+	${ab:+-B"$ab"} \
+	${pass} \
+	${denoise} \
+	-b"${bitrate}" \
+	${width:+-w"$width"} \
+	${length:+-l"$length"} \
+	${displaywidth:+--display-width "$displaywidth"} \
+	-i"$source" -o"$dest" ${1+"$@"}

@@ -87,6 +87,18 @@ CalcSeconds() {
 	unset cs_cur cs_sec
 }
 
+IsNonzeroNumber() {
+	case ${1:-0} in
+	0|*[!0123456789]*)
+		return 1;;
+	esac
+	:
+}
+
+EchoIfNonzeroNumber() {
+	! IsNonzeroNumber "${1:-0}" || Echo "$1"
+}
+
 TitleOpt() {
 	case $titleopt in
 	*[!pPfHsS-]*)

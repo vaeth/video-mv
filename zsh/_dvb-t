@@ -26,7 +26,7 @@ args=(
 '-a+[set specified adapter]:adapter:()'
 '-F+[set specified frontend (numeric)]:frontend:()'
 '-d+[set specified demux (numeric)]:demux:()'
-'-s+[set specified start time)]:start time:("23\:59" "23\:59\:00 31 Dec 2013" "23\:59\:01 today" "now")'
+'-s+[set specified start time]:start time:("23\:59" "23\:59\:00 31 Dec 2013" "23\:59\:01 today" "now")'
 {'(-e)-t','(-t)-e'}'+[set specified recording duration]:stop time:->stoptime'
 '-q[quiet]'
 '1:channel:->channel'
