@@ -43,6 +43,14 @@ in your `$PATH`.
 If you want that the hard status line is set, also the `title` script from
 https://github.com/vaeth/runtitle (version >=2.3) is required in your `$PATH`.
 
+Since v15.0, a patched czap is supported which can directly output to a file.
+The corrsponding patch can be found here:
+https://github.com/vaeth/portage-env-mv/raw/master/env/patches/linuxtv-dvb-apps-czap-record.patch
+This is safer than the previous workaround to run a cat command.
+The script will autodetect whether the patch is available.
+Option -P or the poorman variable in etc/videodefaults can be used to force
+the old behaviour. Setting poorman=false can be set to skip the test.
+
 ### Installation
 
 To install these scripts simply copy the content of bin into your `$PATH`

@@ -7,11 +7,13 @@ case ${0##*/} in
 *t)
 	letter=t
 	capletter=T
+	poorman=false
 	dvbt=:
 	dvbc=false;;
 *)
 	letter=c
 	capletter=C
+	poorman=
 	dvbt=false
 	dvbc=:;;
 esac
@@ -61,11 +63,11 @@ PreCmd() {
 Usage() {
 	CalcChannels || calcchannels="nonreadable ${channels-}"
 	msgignore=
-	$dvbc || msgignore=' (FILE is ignored)'
+	$poorman || msgignore=' (FILE is ignored)'
 	Echo \
 "Usage: ${0##*/} [options] channel [FILE]
 Record from TV to FILE; if channel is '-' quit after honouring options"
-	if $dvbt
+	if ! $poorman
 	then	Echo \
 "If no FILE is given, a random name is chosen."
 	else	Echo \
@@ -75,6 +77,8 @@ Record from TV to FILE; if channel is '-' quit after honouring options"
 "If reasonable, /usr/lib{64,}/libmediaclient.so is prepended to LD_PRELOAD
 which may be useful for sundtek drivers.
 Options:
+-P      poor man mode: Assume that tzap/czap does not support options -o/-t
+        (use -P with czap unless you have a patched version of czap).
 -f      If FILE exists override it
 -r      Set up /dev/dvb/adapterX/dvr0 for TS recording$msgignore
 -p      add pat and pmt to TS recording (implies -r)
@@ -123,13 +127,23 @@ SetDefaults() {
 	dvb=:
 	Push -c precmd
 	SourceDefaults
+	SetPoorman
+}
+
+SetPoorman() {
+	[ -z "${poorman:++}" ] || return 0
+	if ${letter}zap -h 2>&1 | grep -q -- -o >/dev/null 2>&1
+	then	poorman=false
+	else	poorman=:
+	fi
 }
 
 # Parse options
 
 SetDefaults
-while getopts 'nqfrpLMC:e:t:s:c:a:F:d:T:h' opt
+while getopts 'PnqfrpLMC:e:t:s:c:a:F:d:T:h' opt
 do	case $opt in
+	P)	poorman=:;;
 	n)	showonly=:;;
 	q)	verbose=false;;
 	r)	pass=r;;
@@ -153,7 +167,7 @@ shift $(( $OPTIND -1 ))
 [ $# -ge 1 ] || Usage
 channelname=$1
 shift
-if $dvbt
+if ! $poorman
 then	[ $# -le 1 ] || Usage
 fi
 
@@ -171,7 +185,7 @@ CalcChannels || Fatal "cannot read channels file ${channels-}"
 ignorefile=false
 random=false
 file=
-if $dvbt
+if ! $poorman
 then	if [ -z "$pass" ]
 	then	pass=o
 		random=:
@@ -214,8 +228,8 @@ if $verbose && ! $showonly
 then	Echo "
 ${0##*/}: $channelname -> $text
 "
-	if $dvbc && [ -z "$file" ] || {
-		$dvbt && [ x"$pass" != x'o' ]
+	if $poorman && [ -z "$file" ] || {
+		! $poorman && [ x"$pass" != x'o' ]
 	}
 	then	Push -c toprint "$adapterdev"
 		Echo \
@@ -231,7 +245,7 @@ fi
 
 Push -c mycmd ${letter}zap
 [ -z "$pass" ] || Push mycmd "-$pass"
-if $dvbt
+if ! $poorman
 then	[ -z "$file" ] || Push mycmd "$file"
 	[ -z "$stop" ] || Push mycmd '-t' "$stop"
 fi
@@ -241,7 +255,7 @@ fi
 [ -z "$demux" ]    || Push mycmd -d "$demux"
 
 Push mycmd -- "$channelname"
-if $dvbt || [ -z "${stop:++}${file:++}" ]
+if ! $poorman || [ -z "${stop:++}${file:++}" ]
 then	eval MyExec $mycmd
 	Exit
 fi
@@ -275,15 +289,15 @@ then	if $force
 	if $verbose || $showonly
 	then	Push -c toprintA cat -- "$adapterdev"
 		Push -c toprintB "$file"
-		Echo "while :; do $toprintA >|$toprintB; sleep 1; echo 'restarting cat' >&2; done"' &
+		Echo "while :; do $toprintA >>$toprintB; sleep 5; echo 'restarting cat' >&2; done"' &
 killcat=$!'
 		killcat=
 	fi
 	if ! $showonly
 	then	{
 			while :
-			do	cat -- "$adapterdev" >|"$file"
-				sleep 1
+			do	cat -- "$adapterdev" >>"$file"
+				sleep 5
 				echo 'restarting cat' >&2
 			done
 		} &
