@@ -275,12 +275,18 @@ then	if $force
 	if $verbose || $showonly
 	then	Push -c toprintA cat -- "$adapterdev"
 		Push -c toprintB "$file"
-		Echo "$toprintA >$toprintB"' &
+		Echo "while :; do $toprintA >|$toprintB; sleep 1; echo 'restarting cat' >&2; done"' &
 killcat=$!'
 		killcat=
 	fi
 	if ! $showonly
-	then	cat -- "$adapterdev" >"$file" &
+	then	{
+			while :
+			do	cat -- "$adapterdev" >|"$file"
+				sleep 1
+				echo 'restarting cat' >&2
+			done
+		} &
 		killcat=$!
 	fi
 fi
