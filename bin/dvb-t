@@ -138,6 +138,37 @@ SetPoorman() {
 	fi
 }
 
+GetTime() {
+	gettime=`date +%s` && IsNonzeroNumber "${gettime:-+}" \
+		|| Fatal 'date command did not work'
+	eval $1=\$gettime
+}
+
+TimeStart() {
+	[ -n "${file:++}" ] && [ -n "${stop:++}" ] || return 0
+	GetTime recordstart
+	filenumber=
+}
+
+TimeReached() {
+	! $showonly && [ -n "${file:++}" ] || return 0
+	[ -n "${filenumber:++}" ] || test -s "$file" || return 0
+	if [ -n "${stop:++}" ]
+	then	GetTime currenttime
+		stop=$(( $stop + $recordstart - $currenttime ))
+		[ "$stop" -gt 5 ] || return 0
+	fi
+	if [ -z "$filenumber" ]
+	then	filenumber=1
+		filehead=${file%.*}
+		filetail=
+		[ "$filehead" = "$file" ] || filetail=.${file##*.}
+	else	filenumber=$(( $filenumber + 1 ))
+	fi
+	file=`printf '%s_%03d%s' "$filehead" "$filenumber" "$filetail"`
+	return 1
+}
+
 # Parse options
 
 SetDefaults
@@ -187,8 +218,7 @@ random=false
 file=
 if ! $poorman
 then	if [ -z "$pass" ]
-	then	pass=o
-		random=:
+	then	random=:
 	else	ignorefile=:
 	fi
 fi
@@ -229,7 +259,7 @@ then	Echo "
 ${0##*/}: $channelname -> $text
 "
 	if $poorman && [ -z "$file" ] || {
-		! $poorman && [ x"$pass" != x'o' ]
+		! $poorman && [ -n "$pass" ]
 	}
 	then	Push -c toprint "$adapterdev"
 		Echo \
@@ -245,25 +275,28 @@ fi
 
 Push -c mycmd ${letter}zap
 [ -z "$pass" ] || Push mycmd "-$pass"
-if ! $poorman
-then	[ -z "$file" ] || Push mycmd "$file"
-	[ -z "$stop" ] || Push mycmd '-t' "$stop"
-fi
 [ -z "$channels" ] || Push mycmd -c "$channels"
 [ -z "$adapter" ]  || Push mycmd -a "$adapter"
 [ -z "$frontend" ] || Push mycmd -f "$frontend"
 [ -z "$demux" ]    || Push mycmd -d "$demux"
-
-Push mycmd -- "$channelname"
+TimeStart
 if ! $poorman || [ -z "${stop:++}${file:++}" ]
-then	eval MyExec $mycmd
-	Exit
+then	while :
+	do	Push -c filetime
+		if ! $poorman
+		then	[ -z "$file" ] || Push filetime '-o' "$file"
+			[ -z "$stop" ] || Push filetime '-t' "$stop"
+		fi
+		eval MyExec $mycmd $filetime -- "$channelname"
+		trapret=$?
+		! TimeReached || Exit $trapret
+	done
 fi
+Push mycmd -- "$channelname"
 
-trapret=130
 unset killzap
 unset killcat
-KillTrap() {
+KillZapCat() {
 	trap : EXIT HUP INT TERM
 	if [ -n "${killzap++}" ]
 	then	$verbose || $showonly && Echo 'kill $killzap'
@@ -276,50 +309,71 @@ KillTrap() {
 		$showonly || [ -z "$killcat" ] || kill "$killcat"
 		MyExec unset killcat
 	fi
+}
+
+trapret=130
+KillTrap() {
+	KillZapCat
 	trap - EXIT HUP INT TERM
 	exit $trapret
 }
-trap KillTrap EXIT HUP INT TERM
 
-if [ -n "$file" ]
-then	if $force
-	then	set +C >/dev/null 2>&1
-	else	set -C >/dev/null 2>&1
+SetTrap() {
+	trap KillTrap EXIT HUP INT TERM
+}
+
+while :
+do	SetTrap
+	if ! $showonly && [ -n "${file:++}${stop:++}" ]
+	then	if [ -n "${stop:++}" ]
+		then	sleep "$stop" &
+			killsleep=$!
+		else	sleep 2147483647 &
+			killsleep=$!
+		fi
+	fi
+	if [ -n "$file" ]
+	then	if $force
+		then	set +C >/dev/null 2>&1
+		else	set -C >/dev/null 2>&1
+		fi
+		if $verbose || $showonly
+		then	Push -c toprintA cat -- "$adapterdev"
+			Push -c toprintB "$file"
+			Echo "$toprintA >$toprintB "'&
+killcat=$!'
+			killcat=
+		fi
+		if ! $showonly
+		then	{
+				cat -- "$adapterdev" >|"$file"
+				kill $killsleep
+			} &
+			killcat=$!
+		fi
+	elif [ -z "${stop:++}" ]
+	then	eval MyExec $mycmd
+		trapret=$?
+		KillTrap
 	fi
 	if $verbose || $showonly
-	then	Push -c toprintA cat -- "$adapterdev"
-		Push -c toprintB "$file"
-		Echo "while :; do $toprintA >>$toprintB; sleep 5; echo 'restarting cat' >&2; done"' &
-killcat=$!'
-		killcat=
+	then	Echo "$mycmd"' &
+killzap=$!'
+		killzap=
 	fi
 	if ! $showonly
-	then	{
-			while :
-			do	cat -- "$adapterdev" >>"$file"
-				sleep 5
-				echo 'restarting cat' >&2
-			done
-		} &
-		killcat=$!
+	then	eval set -- a $mycmd
+		shift
+		"$@" &
+		killzap=$!
 	fi
-fi
-if [ -z "$stop" ]
-then	eval MyExec $mycmd
-	trapret=$?
-	KillTrap
-fi
-if $verbose || $showonly
-then	Echo "$mycmd"' &
-killzap=$!'
-	killzap=
-fi
-if ! $showonly
-then	eval set -- a $mycmd
-	shift
-	"$@" &
-	killzap=$!
-fi
-eval MyExec sleep "$stop"
-trapret=0
-KillTrap
+	if $verbose || $showonly && [ -n "${stop:++}" ]
+	then	Echo "sleep $stop"
+	fi
+	$showonly || wait $killsleep
+	if TimeReached
+	then	trapret=0
+		KillTrap
+	fi
+	KillZapCat
+done
