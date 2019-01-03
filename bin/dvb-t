@@ -146,6 +146,7 @@ GetTime() {
 
 TimeStart() {
 	[ -n "${file:++}" ] && [ -n "${stop:++}" ] || return 0
+	recordstop=$stop
 	GetTime recordstart
 	filenumber=
 }
@@ -155,7 +156,7 @@ TimeReached() {
 	[ -n "${filenumber:++}" ] || test -s "$file" || return 0
 	if [ -n "${stop:++}" ]
 	then	GetTime currenttime
-		stop=$(( $stop + $recordstart - $currenttime ))
+		stop=$(( $recordstop + $recordstart - $currenttime ))
 		[ "$stop" -gt 5 ] || return 0
 	fi
 	if [ -z "$filenumber" ]
@@ -165,7 +166,7 @@ TimeReached() {
 		[ "$filehead" = "$file" ] || filetail=.${file##*.}
 	else	filenumber=$(( $filenumber + 1 ))
 	fi
-	file=`printf '%s_%03d%s' "$filehead" "$filenumber" "$filetail"`
+	file=`printf '%s_%02d%s' "$filehead" "$filenumber" "$filetail"`
 	return 1
 }
 
@@ -290,6 +291,7 @@ then	while :
 		eval MyExec $mycmd $filetime -- "$channelname"
 		trapret=$?
 		! TimeReached || Exit $trapret
+		sleep 5
 	done
 fi
 Push mycmd -- "$channelname"
