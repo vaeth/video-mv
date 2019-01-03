@@ -159,14 +159,20 @@ TimeReached() {
 		stop=$(( $recordstop + $recordstart - $currenttime ))
 		[ "$stop" -gt 5 ] || return 0
 	fi
-	if [ -z "$filenumber" ]
-	then	filenumber=1
-		filehead=${file%.*}
-		filetail=
-		[ "$filehead" = "$file" ] || filetail=.${file##*.}
-	else	filenumber=$(( $filenumber + 1 ))
-	fi
-	file=`printf '%s_%02d%s' "$filehead" "$filenumber" "$filetail"`
+	while test -s "$file"
+	do	if [ -z "$filenumber" ]
+		then	filenumber=1
+			filerump=${file%.*}
+			fileext=.${file##*.}
+			case $fileext in
+			*/*|".$file")
+				filerump=$file
+				fileext=;;
+			esac
+		else	filenumber=$(( $filenumber + 1 ))
+		fi
+		file=`printf '%s_%02d%s' "$filerump" "$filenumber" "$fileext"`
+	done
 	return 1
 }
 
