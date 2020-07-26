@@ -1,4 +1,6 @@
 #compdef handbrake
+# (C) Martin V\"ath <martin at mvath.de>
+# SPDX-License-Identifier: BSD-3-Clause
 local args
 args=(
 '(1 2 * -)'{'-h','-H'}'[help]'

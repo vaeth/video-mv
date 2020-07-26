@@ -1,4 +1,7 @@
 #!/usr/bin/env sh
+# (C) Martin V\"ath <martin at mvath.de>
+# SPDX-License-Identifier: BSD-3-Clause
+
 # This file is sourced by video/videoencode/dvb-t/dvb-c to set some defaults.
 
 # The first part is to set some defaults common for dvb-t and video{,encode}.

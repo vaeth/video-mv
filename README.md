@@ -1,7 +1,8 @@
 # video-mv
 
 (C) Martin Väth (martin at mvath.de).
-This project is under the BSD license.
+This project is under the BSD license 2.0 (“3-clause BSD license”).
+SPDX-License-Identifier: BSD-3-Clause
 
 Frontends for using __mplayer__/__mencoder__, __ffmpeg__/__libav__, or
 __tzap__/__czap__ as video recorder.

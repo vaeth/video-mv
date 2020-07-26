@@ -1,5 +1,6 @@
 #!/bin/sh
-# (C) Martin V\"ath <martin@mvath.de>
+# (C) Martin V\"ath <martin at mvath.de>
+# SPDX-License-Identifier: BSD-3-Clause
 # Helper code for dvb-t, sleepto, video{,encode,record}.{mplayer,ffmpeg}
 # This script is sourced; the first line is only for editors
 
