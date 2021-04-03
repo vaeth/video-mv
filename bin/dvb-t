@@ -146,21 +146,21 @@ GetTime() {
 }
 
 TimeStart() {
+	filenumber=
 	[ -n "${file:++}" ] && [ -n "${stop:++}" ] || return 0
 	recordstop=$stop
 	GetTime recordstart
-	filenumber=
 }
 
 TimeReached() {
 	! $showonly && [ -n "${file:++}" ] || return 0
-	[ -n "${filenumber:++}" ] || test -s "$file" || return 0
+	[ -n "${filenumber:++}" ] || test -f "$file" || return 0
 	if [ -n "${stop:++}" ]
 	then	GetTime currenttime
 		stop=$(( $recordstop + $recordstart - $currenttime ))
 		[ "$stop" -gt 5 ] || return 0
 	fi
-	while test -s "$file"
+	while test -f "$file"
 	do	if [ -z "$filenumber" ]
 		then	filenumber=1
 			filerump=${file%.*}
@@ -175,6 +175,34 @@ TimeReached() {
 		file=`printf '%s_%02d%s' "$filerump" "$filenumber" "$fileext"`
 	done
 	return 1
+}
+
+unset killzap
+unset killcat
+KillZapCat() {
+	trap : EXIT HUP INT TERM
+	if [ -n "${killzap++}" ]
+	then	$verbose || $showonly && Echo 'kill $killzap'
+		$showonly || [ -z "$killzap" ] || kill "$killzap"
+		MyExec unset killzap
+		[ -z "${killcat++}" ] || MyExec sleep 5
+	fi
+	if [ -n "${killcat++}" ]
+	then	$verbose || $showonly && Echo 'kill $killcat'
+		$showonly || [ -z "$killcat" ] || kill "$killcat"
+		MyExec unset killcat
+	fi
+}
+
+trapret=130
+KillTrap() {
+	KillZapCat
+	trap - EXIT HUP INT TERM
+	exit $trapret
+}
+
+SetTrap() {
+	trap KillTrap EXIT HUP INT TERM
 }
 
 # Parse options
@@ -295,41 +323,34 @@ then	while :
 		then	[ -z "$file" ] || Push filetime '-o' "$file"
 			[ -z "$stop" ] || Push filetime '-t' "$stop"
 		fi
-		eval MyExec $mycmd $filetime -- "$channelname"
-		trapret=$?
-		! TimeReached || Exit $trapret
-		sleep 5
+		if [ -z "${file:++}" ]
+		then	eval MyExec $mycmd $filetime -- "$channelname"
+			trapret=$?
+		else	SetTrap
+			eval MyExecBg killzap $mycmd $filetime -- "$channelname"
+			if $showonly
+			then	trapret=0
+				Echo 'wait $killzap'
+			else	sleep 30
+				if test -s "$file"
+				then	! $verbose || Echo 'wait $killzap'
+					wait $killzap
+					trapret=$?
+					unset killzap
+				else	sleep 5
+					PreCmd
+					trapret=1
+				fi
+			fi
+		fi
+		if TimeReached
+		then	KillTrap
+		fi
+		KillZapCat
 	done
 fi
 Push mycmd -- "$channelname"
 
-unset killzap
-unset killcat
-KillZapCat() {
-	trap : EXIT HUP INT TERM
-	if [ -n "${killzap++}" ]
-	then	$verbose || $showonly && Echo 'kill $killzap'
-		$showonly || [ -z "$killzap" ] || kill "$killzap"
-		MyExec unset killzap
-		[ -z "${killcat++}" ] || MyExec sleep 5
-	fi
-	if [ -n "${killcat++}" ]
-	then	$verbose || $showonly && Echo 'kill $killcat'
-		$showonly || [ -z "$killcat" ] || kill "$killcat"
-		MyExec unset killcat
-	fi
-}
-
-trapret=130
-KillTrap() {
-	KillZapCat
-	trap - EXIT HUP INT TERM
-	exit $trapret
-}
-
-SetTrap() {
-	trap KillTrap EXIT HUP INT TERM
-}
 
 while :
 do	SetTrap
@@ -379,7 +400,14 @@ killzap=$!'
 	if $verbose || $showonly && [ -n "${stop:++}" ]
 	then	Echo "sleep $stop"
 	fi
-	$showonly || wait $killsleep
+	if ! $showonly
+	then	sleep 30
+		if [ -z "${file:++}" ] || test -s "$file"
+		then	wait $killsleep
+		else	sleep 5
+			PreCmd
+		fi
+	fi
 	if TimeReached
 	then	trapret=0
 		KillTrap

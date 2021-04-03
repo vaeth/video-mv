@@ -48,6 +48,19 @@ MyExec() {
 	"$@"
 }
 
+MyExecBg() {
+	myexecbg=$1
+	shift
+	if $verbose || $showonly
+	then	Push -c myexec "$@"
+		Echo "$myexec" '&
+'"$myexecbg"'=$!'
+		! $showonly || return 0
+	fi
+	"$@" &
+	eval $myexecbg=\$!
+}
+
 SourceDefaults() {
 	if test -r /etc/videodefaults
 	then	. /etc/videodefaults
