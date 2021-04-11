@@ -170,7 +170,8 @@ The special value XXX=v is a shortcut for -Fyadif -Fhqdn3d)
 -s X-Y    start at X sec, stop at Y sec. This is the same as -s X -e \$((Y-X))
 -S X cut off first X bytes
 -G   Start new chunk each GB (incompatible, needed for files >4GB)
--g   No odml headers (opposite of -G) (default)"
+-g   No odml headers (opposite of -G) (default)
+-H   rename resulting file according to bitrate"
 	else	Echo \
 "-H   no hqdn3d filtering (lower quality but less processor time)
 -L   no interlacing (lower quality but less processor time)
@@ -389,7 +390,7 @@ SetDefaults() {
 		adevice=
 		immediatemode=
 		audiorate=44100
-	else	optargs=${optargs}O2kP:t:s:S:h
+	else	optargs=${optargs}O2kP:t:s:S:hH
 		br=800
 		lb=
 		hqdn=
@@ -401,6 +402,7 @@ SetDefaults() {
 		soundencode=:
 		totalpass=$defpass
 		refinement=$therefinement
+		rename=false
 	fi
 	dvb=false
 	dvbt=false
@@ -542,7 +544,10 @@ do	case $opt in
 	d)	brightness=$OPTARG;;
 	c)	contrast=$OPTARG;;
 	h)	hue=$OPTARG;;
-	H)	hqdn=;;
+	H)	if $fromfile
+		then	rename=:
+		else	hqdn=
+		fi;;
 	L)	lb=;;
 	D)	device=$OPTARG;;
 	z)	alsa=false;;
@@ -739,12 +744,10 @@ then	[ $# -lt 1 ] && Usage
 	elif ! $fromfile && [ x"$output" = x'+' ]
 	then	output='-'
 	else	record=:
-		if test -r "$output"
-		then	if ! test -b "$output" && ! test -c "$output"
-			then	if $force
-				then	Warning "file $output is overwritten on request"
-				else	Fatal "file $output already exists. Use -f to overwrite."
-				fi
+		if test -f "$output"
+		then	if $force
+			then	Warning "file $output is overwritten on request"
+			else	Fatal "file $output already exists. Use -f to overwrite."
 			fi
 		fi
 	fi
@@ -1067,9 +1070,13 @@ Pass() {
 	else	Push -c ofarg '-f' "$oftype"
 	fi
 	if $record
-	then	if [ -n "${titlepass:++}" ]
-		then	Title "$titlepass ${output##*/}"
-		else	Title "${output##*/}"
+	then	if [ -n "${renamed:++}" ]
+		then	outputdisplay=${renamed##*/}
+		else	outputdisplay=${output##*/}
+		fi
+		if [ -n "${titlepass:++}" ]
+		then	Title "$titlepass $outputdisplay"
+		else	Title "$outputdisplay"
 		fi
 		if $mplayer
 		then	eval "$doexec mencoder \$quiet $ofarg \
@@ -1101,6 +1108,25 @@ Pass() {
 	return $retvalue
 }
 
+CheckRename() {
+	[ "${output:--}" != '-' ] || rename=false
+	$rename || return 0
+	case $output in
+	*.*)	renamed=${output%.*}.$br.${output##*.};;
+	*)	renamed=$output.$br;;
+	esac
+	test -f "$renamed" || return 0
+	if $force
+	then	Warning "file $renamed is overwritten on request"
+	else	Fatal "file $renamed already exists. Use -f to overwrite."
+	fi
+}
+
+DoRename() {
+	$rename || return 0
+	$doexec mv -- "$output" "$renamed"
+}
+
 Passes() {
 	if [ "$1" -lt 1 ] || [ "$2" -lt 1 ] || [ "$2" -lt "$1" ]
 	then	Fatal 'illegal passnumber'
@@ -1114,6 +1140,7 @@ Passes() {
 This means that you have to encode the remaining passes later on.
 Maybe you want to use option -P to decrease the total number of passes.
 If you really meant what you typed, use in addition option -!"
+	CheckRename || return 2
 	Clean s || return 2
 	if [ "$1" -eq 1 ]
 	then	Clean t || return 2
@@ -1136,6 +1163,7 @@ If you really meant what you typed, use in addition option -!"
 	done
 	[ "$totalpass" -gt 0 ] && [ "$2" -lt "$totalpass" ] && return 0
 	Clean l || return 2
+	DoRename || return 2
 	return 0
 }
 
