@@ -134,7 +134,8 @@ Videostream:
 "-t X Use turbomode until (including) pass X in multipassmode
      (The default X=0 means: never use turbomode).
 -k   Keep temporary files even after the last pass or in case of error.
-     For compatibility with earlier versions, option -2 has the same effect"
+     For compatibility with earlier versions, option -2 has the same effect
+-h   help"
 	else	Echo \
 "-D X Use device X  (currently: ${device:-default /dev/video0})
 -k X Use adevice X (currently: ${adevice:-default /dev/dsp})
@@ -543,7 +544,10 @@ do	case $opt in
 	I)	inputchannel=$OPTARG;;
 	d)	brightness=$OPTARG;;
 	c)	contrast=$OPTARG;;
-	h)	hue=$OPTARG;;
+	h)	if $fromfile
+		then	Usage 0
+		else	hue=$OPTARG
+		fi;;
 	H)	if $fromfile
 		then	rename=:
 		else	hqdn=
