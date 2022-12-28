@@ -7,6 +7,7 @@ set -u
 Usage() {
 	Echo "${0##*/}: [options] SOURCE [DEST[.m4v]] [HandBrakeCli options]
 -1 1-pass
+-5 decomb
 -8 denoise with hqdn3d
 -w width (currently $width)
 -l length (currently $length)
@@ -33,6 +34,7 @@ end_at=
 audiomode=mp3
 ab=128
 pass=-2T
+decomb=
 denoise=
 bitrate=600
 width=720
@@ -42,9 +44,10 @@ verbose=:
 showonly=false
 force=false
 OPTIND=1
-while getopts '18w:l:d:b:s:S:e:E:uUB:nfhH' opt
+while getopts '158w:l:d:b:s:S:e:E:uUB:nfhH' opt
 do	case $opt in
 	1)	pass=;;
+	5)	decomb=-5;;
 	8)	denoise=-8;;
 	w)	width=`EchoIfNonzeroNumber "$OPTARG"`;;
 	l)	length=`EchoIfNonzeroNumber "$OPTARG"`;;
@@ -85,6 +88,7 @@ eval MyExec HandBrakeCLI ${videomode:+-e"$videomode"} \
 	${ab:+-B"$ab"} \
 	${pass} \
 	${denoise} \
+	${decomb} \
 	-b"${bitrate}" \
 	${width:+-w"$width"} \
 	${length:+-l"$length"} \
